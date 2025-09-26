@@ -150,7 +150,7 @@ export function AddToolDialog({ categories, onAddTool }: AddToolDialogProps) {
               <div className="flex gap-1">
                 <Select
                   value={formData.protocol}
-                  onValueChange={(value) => handleInputChange('protocol', value)}
+                  onValueChange={(value: string) => handleInputChange('protocol', value)}
                 >
                   <SelectTrigger className="w-24">
                     <SelectValue />
@@ -180,7 +180,7 @@ export function AddToolDialog({ categories, onAddTool }: AddToolDialogProps) {
               </label>
               <Select
                 value={formData.category}
-                onValueChange={(value) => handleInputChange('category', value)}
+                onValueChange={(value: string) => handleInputChange('category', value)}
               >
                 <SelectTrigger className={errors.category ? 'border-red-500' : ''}>
                   <SelectValue placeholder="选择分类" />
