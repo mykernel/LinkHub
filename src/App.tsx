@@ -10,6 +10,7 @@ import { LoginDialog } from '@/components/LoginDialog'
 import { Pagination } from '@/components/Pagination'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { ViewModeToggle } from '@/components/ViewModeToggle'
+import { AdminLayout } from '@/components/AdminLayout'
 import { Button } from '@/components/ui/button'
 import { LogIn, LogOut, User } from 'lucide-react'
 import './App.css'
@@ -79,6 +80,11 @@ function App() {
 
     return counts
   }, [allTools, categories])
+
+  // Admin用户直接显示管理界面
+  if (isAuthenticated && user?.username === 'admin') {
+    return <AdminLayout />
+  }
 
   return (
     <div className="min-h-screen bg-background">
