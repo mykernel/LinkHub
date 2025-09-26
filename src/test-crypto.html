@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Crypto Test</title>
+</head>
+<body>
+    <h1>密码Hash测试</h1>
+    <button onclick="testHash()">测试Hash</button>
+    <div id="result"></div>
+
+    <script type="module">
+        // 从crypto.ts复制的hashPassword函数
+        async function hashPassword(password, salt) {
+            const encoder = new TextEncoder()
+            const passwordBuffer = encoder.encode(password + salt)
+
+            const hashBuffer = await crypto.subtle.digest('SHA-256', passwordBuffer)
+            const hashArray = Array.from(new Uint8Array(hashBuffer))
+
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+        }
+
+        window.testHash = async function() {
+            const password = 'TestPassword123!';
+            const salt = '09be20031723e4509294e262fa6e88ec51c5afc338ce0f4d553c8706fe915f27';
+
+            const hash = await hashPassword(password, salt);
+
+            const expectedHash = 'fd7fd32d52c674dc4fa5d6be2f8d46bd3d741a05ee75ae3ed65cbcae41891441';
+
+            const result = document.getElementById('result');
+            result.innerHTML = `
+                <p><strong>密码:</strong> ${password}</p>
+                <p><strong>Salt:</strong> ${salt}</p>
+                <p><strong>生成的Hash:</strong> ${hash}</p>
+                <p><strong>期望的Hash:</strong> ${expectedHash}</p>
+                <p><strong>匹配:</strong> ${hash === expectedHash ? '✅ 是' : '❌ 否'}</p>
+            `;
+
+            console.log('Web Crypto API hash:', hash);
+            console.log('Expected hash:', expectedHash);
+            console.log('Match:', hash === expectedHash);
+        }
+    </script>
+</body>
+</html>

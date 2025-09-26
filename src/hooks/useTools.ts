@@ -1,52 +1,132 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Tool, SortOption } from '../lib/types'
-import { STORAGE_KEYS, DEFAULT_CATEGORIES } from '../lib/constants'
+import { DEFAULT_CATEGORIES } from '../lib/constants'
+import { useAuth } from '@/contexts/AuthContext'
 import { useLocalStorage } from './useLocalStorage'
 import defaultToolsData from '../data/defaultTools.json'
 
 export function useTools() {
-  const [storedTools, setStoredTools] = useLocalStorage<Tool[]>(STORAGE_KEYS.TOOLS, defaultToolsData.map(tool => ({
+  const { isAuthenticated, loadUserTools, saveUserTools } = useAuth()
+
+  // 本地存储（仅供未登录用户使用）
+  const [localStorageTools, setLocalStorageTools] = useLocalStorage<Tool[]>('ops_tools_local', defaultToolsData.map(tool => ({
     ...tool,
     lastAccessed: new Date(tool.lastAccessed),
     createdAt: new Date(tool.createdAt)
   })))
 
-  // Ensure dates are always Date objects when reading from localStorage
-  const tools = useMemo(() => {
-    return storedTools.map(tool => ({
-      ...tool,
-      lastAccessed: tool.lastAccessed instanceof Date ? tool.lastAccessed : new Date(tool.lastAccessed),
-      createdAt: tool.createdAt instanceof Date ? tool.createdAt : new Date(tool.createdAt)
-    }))
-  }, [storedTools])
+  // 用户工具状态
+  const [userTools, setUserTools] = useState<Tool[]>([])
+  const [isUserDataLoaded, setIsUserDataLoaded] = useState(false)
+  const [isLoadingUserData, setIsLoadingUserData] = useState(false)
 
-  const setTools = (value: Tool[] | ((prev: Tool[]) => Tool[])) => {
-    setStoredTools(value)
-  }
-
+  // 其他状态
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [sortBy, setSortBy] = useState<SortOption>('clicks')
-
-  // Pagination states
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(12)
-
-  // View states
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
 
-  // Filter and sort tools (without pagination)
-  const filteredTools = useMemo(() => {
-    let filtered = tools
+  // 加载用户数据（仅当登录时）
+  useEffect(() => {
+    if (isAuthenticated && !isUserDataLoaded && !isLoadingUserData) {
+      loadUserData()
+    } else if (!isAuthenticated) {
+      // 未登录时重置用户数据状态
+      setUserTools([])
+      setIsUserDataLoaded(false)
+    }
+  }, [isAuthenticated, isUserDataLoaded, isLoadingUserData])
 
-    // Filter by category
+  const loadUserData = async () => {
+    setIsLoadingUserData(true)
+    try {
+      const result = await loadUserTools()
+      if (result.success) {
+        const tools = result.tools || []
+        setUserTools(tools.map(tool => ({
+          ...tool,
+          lastAccessed: new Date(tool.lastAccessed),
+          createdAt: new Date(tool.createdAt)
+        })))
+        setIsUserDataLoaded(true)
+      } else {
+        console.error('Failed to load user tools:', result.error)
+        // 加载失败时显示默认数据
+        setUserTools(defaultToolsData.map(tool => ({
+          ...tool,
+          lastAccessed: new Date(tool.lastAccessed),
+          createdAt: new Date(tool.createdAt)
+        })))
+        setIsUserDataLoaded(true)
+      }
+    } catch (error) {
+      console.error('Load user data error:', error)
+      setUserTools([])
+      setIsUserDataLoaded(true)
+    } finally {
+      setIsLoadingUserData(false)
+    }
+  }
+
+  // 保存用户数据（仅当登录时）
+  const saveUserData = async (tools: Tool[]) => {
+    if (!isAuthenticated) return
+
+    try {
+      const result = await saveUserTools(tools)
+      if (!result.success) {
+        console.error('Failed to save user tools:', result.error)
+        // TODO: 显示错误提示
+      }
+    } catch (error) {
+      console.error('Save user data error:', error)
+    }
+  }
+
+  // 获取当前使用的工具数据
+  const currentTools = useMemo(() => {
+    if (isAuthenticated) {
+      return userTools
+    } else {
+      // 未登录用户使用localStorage数据
+      return localStorageTools.map(tool => ({
+        ...tool,
+        lastAccessed: tool.lastAccessed instanceof Date ? tool.lastAccessed : new Date(tool.lastAccessed),
+        createdAt: tool.createdAt instanceof Date ? tool.createdAt : new Date(tool.createdAt)
+      }))
+    }
+  }, [isAuthenticated, userTools, localStorageTools])
+
+  // 更新工具数据
+  const updateTools = (newTools: Tool[] | ((prev: Tool[]) => Tool[])) => {
+    const updatedTools = typeof newTools === 'function'
+      ? newTools(currentTools)
+      : newTools
+
+    if (isAuthenticated) {
+      setUserTools(updatedTools)
+      // 异步保存到服务器
+      saveUserData(updatedTools)
+    } else {
+      // 未登录用户保存到localStorage
+      setLocalStorageTools(updatedTools)
+    }
+  }
+
+  // 过滤和排序工具
+  const filteredTools = useMemo(() => {
+    let filtered = currentTools
+
+    // 按分类过滤
     if (selectedCategory === 'favorites') {
       filtered = filtered.filter(tool => tool.isPinned)
     } else if (selectedCategory !== 'all') {
       filtered = filtered.filter(tool => tool.category === selectedCategory)
     }
 
-    // Filter by search query
+    // 按搜索关键词过滤
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(tool =>
@@ -55,11 +135,10 @@ export function useTools() {
       )
     }
 
-    // Sort tools with pinned tools staying at their original positions
+    // 排序工具（保持固定位置工具的位置）
     const pinnedTools = filtered.filter(tool => tool.pinnedPosition !== undefined)
     const unpinnedTools = filtered.filter(tool => tool.pinnedPosition === undefined)
 
-    // Sort unpinned tools according to current sort option
     unpinnedTools.sort((a, b) => {
       switch (sortBy) {
         case 'clicks':
@@ -75,18 +154,16 @@ export function useTools() {
       }
     })
 
-    // Create final array with pinned tools at their fixed positions
+    // 重新组合固定位置和未固定的工具
     const result: Tool[] = []
     let unpinnedIndex = 0
 
     for (let i = 0; i < filtered.length; i++) {
-      // Check if there's a pinned tool that should be at position i
       const pinnedAtThisPosition = pinnedTools.find(tool => tool.pinnedPosition === i)
 
       if (pinnedAtThisPosition) {
         result[i] = pinnedAtThisPosition
       } else {
-        // Fill with next unpinned tool if available
         if (unpinnedIndex < unpinnedTools.length) {
           result[i] = unpinnedTools[unpinnedIndex]
           unpinnedIndex++
@@ -94,33 +171,26 @@ export function useTools() {
       }
     }
 
-    filtered = result.filter(Boolean) // Remove any undefined slots
+    return result.filter(Boolean)
+  }, [currentTools, searchQuery, selectedCategory, sortBy])
 
-    return filtered
-  }, [tools, searchQuery, selectedCategory, sortBy])
-
-  // Pagination calculations
+  // 分页计算
   const totalTools = filteredTools.length
   const totalPages = Math.ceil(totalTools / pageSize)
   const startIndex = (currentPage - 1) * pageSize
   const endIndex = startIndex + pageSize
 
-  // Paginated tools
+  // 分页后的工具
   const paginatedTools = useMemo(() => {
     return filteredTools.slice(startIndex, endIndex)
   }, [filteredTools, startIndex, endIndex])
 
-  // Reset to first page when filters change
-  const resetToFirstPage = () => {
-    setCurrentPage(1)
-  }
-
-  // Auto reset to first page when search, category, or sort changes
+  // 重置到第一页
   useEffect(() => {
     setCurrentPage(1)
   }, [searchQuery, selectedCategory, sortBy])
 
-  // Pagination handlers
+  // 分页操作
   const goToPage = (page: number) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page)
@@ -141,11 +211,16 @@ export function useTools() {
 
   const changePageSize = (newSize: number) => {
     setPageSize(newSize)
-    setCurrentPage(1) // Reset to first page when changing page size
+    setCurrentPage(1)
   }
 
-  // Add new tool
+  // 工具操作（仅登录用户可以修改）
   const addTool = (toolData: Omit<Tool, 'id' | 'clickCount' | 'lastAccessed' | 'createdAt' | 'isPinned' | 'pinnedPosition'>) => {
+    if (!isAuthenticated) {
+      console.warn('需要登录才能添加工具')
+      return
+    }
+
     const newTool: Tool = {
       ...toolData,
       id: Date.now().toString(),
@@ -155,24 +230,33 @@ export function useTools() {
       isPinned: false,
       pinnedPosition: undefined
     }
-    setTools(prev => [...prev, newTool])
+
+    updateTools(prev => [...prev, newTool])
   }
 
-  // Update tool
   const updateTool = (id: string, updates: Partial<Tool>) => {
-    setTools(prev => prev.map(tool =>
+    if (!isAuthenticated) {
+      console.warn('需要登录才能修改工具')
+      return
+    }
+
+    updateTools(prev => prev.map(tool =>
       tool.id === id ? { ...tool, ...updates } : tool
     ))
   }
 
-  // Delete tool
   const deleteTool = (id: string) => {
-    setTools(prev => prev.filter(tool => tool.id !== id))
+    if (!isAuthenticated) {
+      console.warn('需要登录才能删除工具')
+      return
+    }
+
+    updateTools(prev => prev.filter(tool => tool.id !== id))
   }
 
-  // Record tool click
+  // 记录点击（所有用户都可以）
   const recordClick = (id: string) => {
-    setTools(prev => prev.map(tool =>
+    updateTools(prev => prev.map(tool =>
       tool.id === id
         ? {
             ...tool,
@@ -183,26 +267,35 @@ export function useTools() {
     ))
   }
 
-  // Toggle pin status
+  // 切换收藏/固定状态（仅登录用户）
   const togglePin = (id: string) => {
-    setTools(prev => prev.map(tool =>
+    if (!isAuthenticated) {
+      console.warn('需要登录才能收藏工具')
+      return
+    }
+
+    updateTools(prev => prev.map(tool =>
       tool.id === id ? { ...tool, isPinned: !tool.isPinned } : tool
     ))
   }
 
-  // Toggle pin position (fix tool to current position in filtered list)
   const togglePinPosition = (id: string) => {
-    setTools(prev => {
+    if (!isAuthenticated) {
+      console.warn('需要登录才能固定工具位置')
+      return
+    }
+
+    updateTools(prev => {
       const currentTool = prev.find(tool => tool.id === id)
       if (!currentTool) return prev
 
       if (currentTool.pinnedPosition !== undefined) {
-        // Remove pin position
+        // 取消固定位置
         return prev.map(tool =>
           tool.id === id ? { ...tool, pinnedPosition: undefined } : tool
         )
       } else {
-        // Add pin position - find current position in filtered tools
+        // 固定到当前位置
         const currentPosition = filteredTools.findIndex(tool => tool.id === id)
         return prev.map(tool =>
           tool.id === id ? { ...tool, pinnedPosition: currentPosition >= 0 ? currentPosition : 0 } : tool
@@ -211,25 +304,31 @@ export function useTools() {
     })
   }
 
-  // Batch operations
+  // 批量操作（仅登录用户）
   const deleteMultiple = (ids: string[]) => {
-    setTools(prev => prev.filter(tool => !ids.includes(tool.id)))
+    if (!isAuthenticated) return
+    updateTools(prev => prev.filter(tool => !ids.includes(tool.id)))
   }
 
   const updateCategory = (ids: string[], category: string) => {
-    setTools(prev => prev.map(tool =>
+    if (!isAuthenticated) return
+    updateTools(prev => prev.map(tool =>
       ids.includes(tool.id) ? { ...tool, category } : tool
     ))
   }
 
   return {
-    // Data
-    tools: paginatedTools, // Changed to paginated tools
-    allTools: tools,
-    allFilteredTools: filteredTools, // All filtered tools without pagination
+    // 数据
+    tools: paginatedTools,
+    allTools: currentTools,
+    allFilteredTools: filteredTools,
     categories: DEFAULT_CATEGORIES,
 
-    // Filters and search
+    // 状态
+    isLoading: isLoadingUserData,
+    isDataLoaded: !isAuthenticated || isUserDataLoaded,
+
+    // 过滤和搜索
     searchQuery,
     setSearchQuery,
     selectedCategory,
@@ -237,7 +336,7 @@ export function useTools() {
     sortBy,
     setSortBy,
 
-    // Pagination
+    // 分页
     currentPage,
     pageSize,
     totalTools,
@@ -246,13 +345,12 @@ export function useTools() {
     goToNextPage,
     goToPrevPage,
     changePageSize,
-    resetToFirstPage,
 
-    // View mode
+    // 视图模式
     viewMode,
     setViewMode,
 
-    // Actions
+    // 工具操作
     addTool,
     updateTool,
     deleteTool,
@@ -260,6 +358,9 @@ export function useTools() {
     togglePin,
     togglePinPosition,
     deleteMultiple,
-    updateCategory
+    updateCategory,
+
+    // 数据同步
+    refreshUserData: loadUserData
   }
 }

@@ -1,17 +1,23 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useTools } from '@/hooks/useTools'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
+import { useAuth } from '@/contexts/AuthContext'
 import { ToolCard } from '@/components/ToolCard'
 import { CategoryNav } from '@/components/CategoryNav'
 import { SearchBar } from '@/components/SearchBar'
 import { AddToolDialog } from '@/components/AddToolDialog'
+import { LoginDialog } from '@/components/LoginDialog'
 import { Pagination } from '@/components/Pagination'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { ViewModeToggle } from '@/components/ViewModeToggle'
 import { Button } from '@/components/ui/button'
+import { LogIn, LogOut, User } from 'lucide-react'
 import './App.css'
 
 function App() {
+  const [showLoginDialog, setShowLoginDialog] = useState(false)
+
+  const { user, isAuthenticated, isLoading, logout } = useAuth()
 
   const {
     tools,
@@ -82,15 +88,59 @@ function App() {
             <div>
               <h1 className="text-3xl font-bold text-foreground">运维导航页面</h1>
               <p className="text-muted-foreground mt-2">
-                快速访问运维工具和系统 • 共 {allTools.length} 个工具
+                {isAuthenticated ? (
+                  <>
+                    欢迎回来，{user?.username} • 共 {allTools.length} 个工具
+                  </>
+                ) : (
+                  <>
+                    快速访问运维工具和系统 • 共 {allTools.length} 个工具 •
+                    <span className="text-orange-500 ml-1">登录后可管理工具</span>
+                  </>
+                )}
               </p>
             </div>
             <div className="flex items-center gap-3">
               <ThemeToggle />
-              <AddToolDialog
-                categories={categories}
-                onAddTool={addTool}
-              />
+
+              {/* 用户认证按钮 */}
+              {isAuthenticated ? (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowLoginDialog(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <User className="h-4 w-4" />
+                    {user?.username}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={logout}
+                    className="flex items-center gap-2"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    注销
+                  </Button>
+                  <AddToolDialog
+                    categories={categories}
+                    onAddTool={addTool}
+                  />
+                </>
+              ) : (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => setShowLoginDialog(true)}
+                  className="flex items-center gap-2"
+                  disabled={isLoading}
+                >
+                  <LogIn className="h-4 w-4" />
+                  {isLoading ? '加载中...' : '登录'}
+                </Button>
+              )}
             </div>
           </div>
         </header>
@@ -170,6 +220,12 @@ function App() {
           </div>
         </main>
       </div>
+
+      {/* 登录对话框 */}
+      <LoginDialog
+        open={showLoginDialog}
+        onOpenChange={setShowLoginDialog}
+      />
     </div>
   )
 }
