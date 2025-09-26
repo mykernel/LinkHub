@@ -9,6 +9,7 @@ export interface Tool {
   lastAccessed: Date
   createdAt: Date
   isPinned: boolean
+  pinnedPosition?: number
 }
 
 export interface Category {

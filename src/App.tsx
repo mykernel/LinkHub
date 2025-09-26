@@ -1,16 +1,22 @@
 import { useMemo } from 'react'
 import { useTools } from '@/hooks/useTools'
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { ToolCard } from '@/components/ToolCard'
 import { CategoryNav } from '@/components/CategoryNav'
 import { SearchBar } from '@/components/SearchBar'
 import { AddToolDialog } from '@/components/AddToolDialog'
+import { Pagination } from '@/components/Pagination'
+import { ThemeToggle } from '@/components/theme-toggle'
+import { ViewModeToggle } from '@/components/ViewModeToggle'
 import { Button } from '@/components/ui/button'
 import './App.css'
 
 function App() {
+
   const {
     tools,
     allTools,
+    allFilteredTools,
     categories,
     searchQuery,
     setSearchQuery,
@@ -18,8 +24,38 @@ function App() {
     setSelectedCategory,
     recordClick,
     togglePin,
-    addTool
+    togglePinPosition,
+    addTool,
+    deleteTool,
+    // Pagination
+    currentPage,
+    pageSize,
+    totalTools,
+    totalPages,
+    goToPage,
+    goToNextPage,
+    goToPrevPage,
+    changePageSize,
+    // View mode
+    viewMode,
+    setViewMode
   } = useTools()
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onSearchFocus: () => {
+      // TODO: Implement search focus after fixing SearchBar forwardRef issue
+      console.log('Search focus shortcut pressed')
+    },
+    onEscape: () => {
+      // Clear search when pressing Escape
+      if (searchQuery) {
+        setSearchQuery('')
+      }
+    },
+    categories: categories.slice(0, 9), // Only support shortcuts for first 9 categories
+    onCategorySelect: setSelectedCategory
+  })
 
   // Calculate tool counts for each category
   const toolCounts = useMemo(() => {
@@ -49,10 +85,13 @@ function App() {
                 快速访问运维工具和系统 • 共 {allTools.length} 个工具
               </p>
             </div>
-            <AddToolDialog
-              categories={categories}
-              onAddTool={addTool}
-            />
+            <div className="flex items-center gap-3">
+              <ThemeToggle />
+              <AddToolDialog
+                categories={categories}
+                onAddTool={addTool}
+              />
+            </div>
           </div>
         </header>
 
@@ -68,15 +107,21 @@ function App() {
             </aside>
 
             <div className="flex-1 min-w-0">
-              <div className="mb-6">
-                <SearchBar
-                  searchQuery={searchQuery}
-                  onSearchChange={setSearchQuery}
-                  placeholder="搜索工具名称或描述..."
+              <div className="mb-6 flex items-center gap-4">
+                <div className="flex-1">
+                  <SearchBar
+                    searchQuery={searchQuery}
+                    onSearchChange={setSearchQuery}
+                    placeholder="搜索工具名称或描述..."
+                  />
+                </div>
+                <ViewModeToggle
+                  viewMode={viewMode}
+                  onViewModeChange={setViewMode}
                 />
               </div>
 
-              {tools.length === 0 ? (
+              {allFilteredTools.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="text-muted-foreground mb-4">
                     {searchQuery ? '未找到匹配的工具' : '当前分类下暂无工具'}
@@ -91,28 +136,35 @@ function App() {
                   )}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div className={viewMode === 'grid'
+                  ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+                  : "flex flex-col gap-3"
+                }>
                   {tools.map((tool) => (
                     <ToolCard
                       key={tool.id}
                       tool={tool}
                       onRecordClick={recordClick}
                       onTogglePin={togglePin}
+                      onTogglePinPosition={togglePinPosition}
+                      onDelete={deleteTool}
+                      viewMode={viewMode}
                     />
                   ))}
                 </div>
               )}
 
-              {tools.length > 0 && (
-                <div className="mt-8 text-center text-sm text-muted-foreground">
-                  显示 {tools.length} 个工具
-                  {selectedCategory !== 'all' && (
-                    <span> • 分类: {categories.find(c => c.id === selectedCategory)?.name}</span>
-                  )}
-                  {searchQuery && (
-                    <span> • 搜索: "{searchQuery}"</span>
-                  )}
-                </div>
+              {allFilteredTools.length > 0 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={totalTools}
+                  pageSize={pageSize}
+                  onPageChange={goToPage}
+                  onPageSizeChange={changePageSize}
+                  onPrevPage={goToPrevPage}
+                  onNextPage={goToNextPage}
+                />
               )}
             </div>
           </div>

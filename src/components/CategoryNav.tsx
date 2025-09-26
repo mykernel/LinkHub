@@ -17,7 +17,7 @@ export function CategoryNav({
   toolCounts = {}
 }: CategoryNavProps) {
   return (
-    <Card>
+    <Card className="dark:bg-surface dark:border-border/50">
       <CardHeader className="pb-3">
         <CardTitle className="text-lg">分类导航</CardTitle>
       </CardHeader>
@@ -28,8 +28,9 @@ export function CategoryNav({
               key={category.id}
               variant={selectedCategory === category.id ? "default" : "ghost"}
               className={cn(
-                "w-full justify-start text-left font-normal",
-                selectedCategory === category.id && "bg-primary text-primary-foreground"
+                "w-full justify-start text-left font-normal transition-all duration-200",
+                "hover:bg-accent/80 dark:hover:bg-surface-highlight",
+                selectedCategory === category.id && "bg-primary text-primary-foreground shadow-sm"
               )}
               onClick={() => onSelectCategory(category.id)}
             >
