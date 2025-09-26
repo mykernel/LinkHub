@@ -1,1 +1,1 @@
-{"username":"testuser001","passwordHash":"test_hash_value","salt":"test_salt_value","createdAt":"2025-09-26T14:36:35.051Z","lastLoginAt":"2025-09-26T14:36:54.343Z","dataVersion":1}
+{"username":"testuser001","passwordHash":"test_hash_value","salt":"test_salt_value","createdAt":"2025-09-26T14:36:35.051Z","lastLoginAt":"2025-09-26T14:36:54.343Z","dataVersion":1,"disabled":true,"updatedAt":"2025-09-26T16:28:34.462Z"}
