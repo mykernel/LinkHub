@@ -1108,29 +1108,7 @@ app.delete('/api/categories/:id', authenticateToken, async (req, res) => {
         return res.status(404).json({ error: '分类不存在' });
       }
 
-      // 检查该分类下是否有工具
-      const toolsInCategory = userData.tools.filter(tool => tool.category === id);
-
-      if (toolsInCategory.length > 0) {
-        if (!target_category_id) {
-          return res.status(400).json({
-            error: '该分类下还有工具，请指定目标分类ID',
-            tools_count: toolsInCategory.length
-          });
-        }
-
-        // 验证目标分类是否存在
-        const systemCategoriesForValidation = ['monitoring', 'logging', 'deployment', 'database', 'documentation', 'network', 'security'];
-        const validTargetCategories = [...systemCategoriesForValidation, ...userData.categories.map(cat => cat.id)];
-        if (!validTargetCategories.includes(target_category_id)) {
-          return res.status(400).json({ error: '目标分类不存在' });
-        }
-
-        // 将工具重分配到目标分类
-        userData.tools = userData.tools.map(tool =>
-          tool.category === id ? { ...tool, category: target_category_id } : tool
-        );
-      }
+      // 注意：工具移动现在由前端处理，后端只负责删除分类
 
       // 删除分类
       if (isSystemCategory) {
@@ -1150,7 +1128,7 @@ app.delete('/api/categories/:id', authenticateToken, async (req, res) => {
       res.json({
         success: true,
         message: '分类删除成功',
-        moved_tools: toolsInCategory.length
+        moved_tools: 0  // 前端现在处理工具移动
       });
 
     } finally {

@@ -51,8 +51,7 @@ function App() {
     updateCategory,
     deleteCategory,
     canManageCategory,
-    // Data sync
-    refreshUserData
+    updateToolsCategory
   } = useTools()
 
   // Keyboard shortcuts
@@ -71,14 +70,31 @@ function App() {
     onCategorySelect: setSelectedCategory
   })
 
-  // 包装删除分类函数，在删除成功后刷新工具数据
+  // 包装删除分类函数，处理工具移动
   const handleDeleteCategory = async (id: string, targetCategoryId?: string) => {
-    const result = await deleteCategory(id, targetCategoryId)
-    if (result.success && result.movedTools && result.movedTools > 0) {
-      // 如果有工具被移动，刷新用户工具数据以确保数据同步
-      console.log(`🔄 分类删除成功，${result.movedTools} 个工具已移动，正在刷新工具数据...`)
-      await refreshUserData()
+    // 先找到该分类下的所有工具
+    const toolsInCategory = allTools.filter(tool => tool.category === id)
+    console.log('🔥 App.handleDeleteCategory 被调用！', { id, targetCategoryId, toolsCount: toolsInCategory.length })
+
+    // 如果有工具且有目标分类，先移动工具
+    if (toolsInCategory.length > 0 && targetCategoryId) {
+      const toolIds = toolsInCategory.map(tool => tool.id)
+      console.log('🔄 正在移动工具：', { toolIds, from: id, to: targetCategoryId })
+      updateToolsCategory(toolIds, targetCategoryId)
+      console.log(`✅ 已在前端移动 ${toolsInCategory.length} 个工具`)
     }
+
+    // 然后删除分类
+    const result = await deleteCategory(id, targetCategoryId)
+
+    // 返回实际移动的工具数量
+    if (result.success) {
+      return {
+        ...result,
+        movedTools: toolsInCategory.length
+      }
+    }
+
     return result
   }
 
@@ -98,6 +114,7 @@ function App() {
 
     return counts
   }, [allTools, categories])
+
 
   // Admin用户直接显示管理界面
   if (isAuthenticated && user?.username === 'admin') {
