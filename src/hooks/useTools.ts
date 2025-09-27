@@ -3,10 +3,18 @@ import { Tool, SortOption } from '../lib/types'
 import { useAuth } from '@/contexts/AuthContext'
 import { useLocalStorage } from './useLocalStorage'
 import { useCategories } from './useCategories'
+import { useSystemDefaultTools } from './useSystemDefaultTools'
 import defaultToolsData from '../data/defaultTools.json'
 
 export function useTools() {
   const { isAuthenticated, loadUserTools, saveUserTools } = useAuth()
+
+  // 系统默认工具加载
+  const {
+    tools: systemDefaultTools,
+    isLoading: isLoadingSystemDefaults,
+    usingSystemConfig
+  } = useSystemDefaultTools()
 
   // 集成分类管理
   const {
@@ -66,17 +74,58 @@ export function useTools() {
         setIsUserDataLoaded(true)
       } else {
         console.error('Failed to load user tools:', result.error)
-        // 加载失败时显示默认数据
-        setUserTools(defaultToolsData.map(tool => ({
-          ...tool,
-          lastAccessed: new Date(tool.lastAccessed),
-          createdAt: new Date(tool.createdAt)
-        })))
+        // 加载失败时优先使用系统配置的默认数据，降级到静态默认数据
+        if (systemDefaultTools.length > 0) {
+          // 使用系统配置的默认工具，为用户创建个人副本
+          const userCopyTools = systemDefaultTools.map(tool => ({
+            ...tool,
+            id: `user_copy_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${tool.id}`,
+            lastAccessed: new Date(),
+            createdAt: new Date(),
+            clickCount: 0,
+            isPinned: false,
+            pinnedPosition: undefined
+          }))
+          setUserTools(userCopyTools)
+
+          if (import.meta.env.DEV) {
+            console.log('✅ 用户数据加载失败，使用系统配置默认工具', { count: userCopyTools.length })
+          }
+        } else {
+          // 系统配置为空时，使用静态默认数据
+          setUserTools(defaultToolsData.map(tool => ({
+            ...tool,
+            lastAccessed: new Date(tool.lastAccessed),
+            createdAt: new Date(tool.createdAt)
+          })))
+
+          if (import.meta.env.DEV) {
+            console.log('📁 用户数据加载失败，使用静态默认数据', { count: defaultToolsData.length })
+          }
+        }
         setIsUserDataLoaded(true)
       }
     } catch (error) {
       console.error('Load user data error:', error)
-      setUserTools([])
+      // 异常情况下也优先使用系统配置的默认工具
+      if (systemDefaultTools.length > 0) {
+        const userCopyTools = systemDefaultTools.map(tool => ({
+          ...tool,
+          id: `user_error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${tool.id}`,
+          lastAccessed: new Date(),
+          createdAt: new Date(),
+          clickCount: 0,
+          isPinned: false,
+          pinnedPosition: undefined
+        }))
+        setUserTools(userCopyTools)
+
+        if (import.meta.env.DEV) {
+          console.log('✅ 用户数据加载异常，使用系统配置默认工具', { count: userCopyTools.length })
+        }
+      } else {
+        setUserTools([])
+      }
       setIsUserDataLoaded(true)
     } finally {
       setIsLoadingUserData(false)
@@ -103,14 +152,41 @@ export function useTools() {
     if (isAuthenticated) {
       return userTools
     } else {
-      // 未登录用户使用localStorage数据
-      return localStorageTools.map(tool => ({
-        ...tool,
-        lastAccessed: tool.lastAccessed instanceof Date ? tool.lastAccessed : new Date(tool.lastAccessed),
-        createdAt: tool.createdAt instanceof Date ? tool.createdAt : new Date(tool.createdAt)
-      }))
+      // 未登录用户：优化的加载逻辑，避免闪烁
+      if (isLoadingSystemDefaults) {
+        // 正在加载系统配置时，返回空数组触发骨架屏
+        return []
+      }
+
+      if (usingSystemConfig) {
+        // 使用系统配置的默认工具
+        return systemDefaultTools.map(tool => {
+          // 尝试从localStorage获取该工具的点击状态
+          const localTool = localStorageTools.find(local => local.url === tool.url)
+          return {
+            ...tool,
+            clickCount: localTool?.clickCount || tool.clickCount || 0,
+            lastAccessed: localTool?.lastAccessed instanceof Date
+              ? localTool.lastAccessed
+              : localTool?.lastAccessed
+                ? new Date(localTool.lastAccessed)
+                : tool.lastAccessed instanceof Date
+                  ? tool.lastAccessed
+                  : new Date(tool.lastAccessed),
+            isPinned: localTool?.isPinned || tool.isPinned || false,
+            pinnedPosition: localTool?.pinnedPosition || tool.pinnedPosition
+          }
+        })
+      } else {
+        // 系统配置为空或加载失败时，使用localStorage静态数据
+        return localStorageTools.map(tool => ({
+          ...tool,
+          lastAccessed: tool.lastAccessed instanceof Date ? tool.lastAccessed : new Date(tool.lastAccessed),
+          createdAt: tool.createdAt instanceof Date ? tool.createdAt : new Date(tool.createdAt)
+        }))
+      }
     }
-  }, [isAuthenticated, userTools, localStorageTools])
+  }, [isAuthenticated, userTools, systemDefaultTools, localStorageTools, isLoadingSystemDefaults, usingSystemConfig])
 
   // 更新工具数据
   const updateTools = (newTools: Tool[] | ((prev: Tool[]) => Tool[])) => {
@@ -123,8 +199,42 @@ export function useTools() {
       // 异步保存到服务器
       saveUserData(updatedTools)
     } else {
-      // 未登录用户保存到localStorage
-      setLocalStorageTools(updatedTools)
+      // 未登录用户：如果使用系统配置，只保存状态到localStorage
+      if (usingSystemConfig) {
+        // 只保存点击次数、收藏状态等用户行为数据
+        const statusOnlyTools = updatedTools.map(tool => {
+          const localTool = localStorageTools.find(local => local.url === tool.url)
+          if (localTool) {
+            // 更新现有工具的状态
+            return {
+              ...localTool,
+              clickCount: tool.clickCount,
+              lastAccessed: tool.lastAccessed,
+              isPinned: tool.isPinned,
+              pinnedPosition: tool.pinnedPosition
+            }
+          } else {
+            // 新增工具状态记录（只保留必要字段）
+            return {
+              id: tool.id,
+              name: tool.name,
+              url: tool.url,
+              category: tool.category,
+              description: tool.description || '',
+              icon: tool.icon || '🔗',
+              clickCount: tool.clickCount,
+              lastAccessed: tool.lastAccessed,
+              createdAt: tool.createdAt,
+              isPinned: tool.isPinned,
+              pinnedPosition: tool.pinnedPosition
+            }
+          }
+        })
+        setLocalStorageTools(statusOnlyTools)
+      } else {
+        // 不使用系统配置时，完整保存到localStorage
+        setLocalStorageTools(updatedTools)
+      }
     }
   }
 
@@ -340,6 +450,7 @@ export function useTools() {
     // 状态
     isLoading: isLoadingUserData || isCategoriesLoading,
     isDataLoaded: (!isAuthenticated || isUserDataLoaded),
+    isLoadingDefaults: !isAuthenticated && isLoadingSystemDefaults,
 
     // 过滤和搜索
     searchQuery,

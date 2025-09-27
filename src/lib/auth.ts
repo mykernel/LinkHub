@@ -55,7 +55,7 @@ async function apiRequest(url: string, options: RequestInit = {}): Promise<Respo
 
   // 安全的API请求日志（过滤敏感信息）
   if (import.meta.env.DEV) {
-    const safeHeaders = { ...fetchOptions.headers };
+    const safeHeaders = { ...fetchOptions.headers } as Record<string, any>;
     if (safeHeaders.Authorization) {
       safeHeaders.Authorization = '[REDACTED]';
     }
@@ -135,15 +135,53 @@ export async function registerUser(
     // 2. 生成密码hash
     const passwordHash = await hashPassword(password, challenge.salt)
 
-    // 3. 准备默认工具数据 - 转换日期格式并设置当前时间
+    // 3. 准备默认工具数据 - 优先使用系统配置的默认工具
     const currentTime = new Date().toISOString()
-    const initialToolsData = defaultToolsData.map(tool => ({
-      ...tool,
-      lastAccessed: currentTime,
-      createdAt: currentTime,
-      // 为新用户生成新的ID以避免冲突
-      id: `${tool.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-    }))
+    let initialToolsData = []
+
+    try {
+      // 尝试获取管理员配置的系统默认工具
+      const systemResponse = await fetch(`${API_BASE}/default-tools`)
+      if (systemResponse.ok) {
+        const systemData = await systemResponse.json()
+        if (systemData.success && systemData.tools && systemData.tools.length > 0) {
+          // 使用系统配置的工具作为新用户的初始数据
+          initialToolsData = systemData.tools.map((tool: any) => ({
+            ...tool,
+            lastAccessed: currentTime,
+            createdAt: currentTime,
+            // 为新用户生成新的ID以避免冲突
+            id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${tool.id}`,
+            clickCount: 0,
+            isPinned: false,
+            pinnedPosition: undefined
+          }))
+
+          if (import.meta.env.DEV) {
+            console.log('✅ 新用户使用系统配置的默认工具', { count: initialToolsData.length })
+          }
+        }
+      }
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn('⚠️ 获取系统默认工具失败，使用静态默认数据', error)
+      }
+    }
+
+    // 如果系统配置为空或获取失败，使用静态默认数据
+    if (initialToolsData.length === 0) {
+      initialToolsData = defaultToolsData.map(tool => ({
+        ...tool,
+        lastAccessed: currentTime,
+        createdAt: currentTime,
+        // 为新用户生成新的ID以避免冲突
+        id: `${tool.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      }))
+
+      if (import.meta.env.DEV) {
+        console.log('📁 新用户使用静态默认数据', { count: initialToolsData.length })
+      }
+    }
 
     // 4. 将默认工具数据包装成与 saveUserTools 相同的结构
     const initialUserData = {

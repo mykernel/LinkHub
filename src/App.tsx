@@ -3,6 +3,7 @@ import { useTools } from '@/hooks/useTools'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { useAuth } from '@/contexts/AuthContext'
 import { ToolCard } from '@/components/ToolCard'
+import { ToolCardSkeleton } from '@/components/ToolCardSkeleton'
 import { CategoryNav } from '@/components/CategoryNav'
 import { SearchBar } from '@/components/SearchBar'
 import { AddToolDialog } from '@/components/AddToolDialog'
@@ -51,7 +52,9 @@ function App() {
     updateCategory,
     deleteCategory,
     canManageCategory,
-    updateToolsCategory
+    updateToolsCategory,
+    // Loading states
+    isLoadingDefaults
   } = useTools()
 
   // Keyboard shortcuts
@@ -217,7 +220,10 @@ function App() {
                 />
               </div>
 
-              {allFilteredTools.length === 0 ? (
+              {isLoadingDefaults ? (
+                // 显示骨架屏，避免闪烁
+                <ToolCardSkeleton viewMode={viewMode} count={8} />
+              ) : allFilteredTools.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="text-muted-foreground mb-4">
                     {searchQuery ? '未找到匹配的工具' : '当前分类下暂无工具'}

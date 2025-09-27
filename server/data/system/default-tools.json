@@ -1,0 +1,43 @@
+{
+  "tools": [
+    {
+      "id": "system_test_1",
+      "name": "系统管理员配置的工具1",
+      "url": "https://example.com/tool1",
+      "category": "monitoring",
+      "description": "这是管理员配置的第一个默认工具",
+      "icon": "🔧",
+      "clickCount": 0,
+      "lastAccessed": "2025-09-27T07:26:29.608Z",
+      "createdAt": "2025-09-27T07:30:00.000Z",
+      "isPinned": false
+    },
+    {
+      "id": "system_test_2",
+      "name": "系统管理员配置的工具2",
+      "url": "https://example.com/tool2",
+      "category": "deployment",
+      "description": "这是管理员配置的第二个默认工具",
+      "icon": "⚙️",
+      "clickCount": 0,
+      "lastAccessed": "2025-09-27T07:26:29.608Z",
+      "createdAt": "2025-09-27T07:30:00.000Z",
+      "isPinned": false
+    },
+    {
+      "id": "admin_1758957988310_f9s0wjz75",
+      "name": "AAA",
+      "url": "https://www.baidu.com",
+      "category": "logging",
+      "description": "",
+      "icon": "🔗",
+      "clickCount": 0,
+      "lastAccessed": "2025-09-27T07:26:29.608Z",
+      "createdAt": "2025-09-27T07:26:28.310Z",
+      "isPinned": false
+    }
+  ],
+  "version": 2,
+  "updatedAt": "2025-09-27T07:26:29.612Z",
+  "updatedBy": "admin"
+}

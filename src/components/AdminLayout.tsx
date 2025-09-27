@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { LogOut, Users, BarChart3, Settings, Home } from 'lucide-react'
+import { LogOut, Users, BarChart3, Settings, Home, Wrench } from 'lucide-react'
 import { AdminUserManagement } from './admin/AdminUserManagement'
 import { AdminDashboard } from './admin/AdminDashboard'
+import { AdminDefaultTools } from './admin/AdminDefaultTools'
 
-type AdminView = 'dashboard' | 'users' | 'settings'
+type AdminView = 'dashboard' | 'users' | 'default-tools' | 'settings'
 
 export function AdminLayout() {
   const { user, logout } = useAuth()
@@ -15,6 +16,7 @@ export function AdminLayout() {
   const navigation = [
     { id: 'dashboard' as AdminView, name: '系统概览', icon: BarChart3 },
     { id: 'users' as AdminView, name: '用户管理', icon: Users },
+    { id: 'default-tools' as AdminView, name: '默认工具', icon: Wrench },
     { id: 'settings' as AdminView, name: '系统设置', icon: Settings },
   ]
 
@@ -24,6 +26,8 @@ export function AdminLayout() {
         return <AdminDashboard />
       case 'users':
         return <AdminUserManagement />
+      case 'default-tools':
+        return <AdminDefaultTools />
       case 'settings':
         return (
           <div className="p-6">

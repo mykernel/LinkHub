@@ -1209,6 +1209,225 @@ app.delete('/api/categories/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// =============================================================================
+// 系统默认工具管理 API (Admin Only)
+// =============================================================================
+
+const SYSTEM_DATA_DIR = path.join(process.cwd(), 'data/system');
+const DEFAULT_TOOLS_FILE = path.join(SYSTEM_DATA_DIR, 'default-tools.json');
+
+// 确保系统数据目录存在
+await fs.ensureDir(SYSTEM_DATA_DIR);
+
+// 获取系统默认工具 (公开API - 供所有用户访问)
+app.get('/api/default-tools', async (_req, res) => {
+  try {
+    // 如果系统配置文件不存在，返回空数组
+    if (!await fs.pathExists(DEFAULT_TOOLS_FILE)) {
+      return res.json({
+        success: true,
+        tools: [],
+        version: 0,
+        message: '系统默认工具配置为空'
+      });
+    }
+
+    const systemData = await fs.readJSON(DEFAULT_TOOLS_FILE);
+    res.json({
+      success: true,
+      tools: systemData.tools || [],
+      version: systemData.version || 0
+    });
+
+  } catch (error) {
+    console.error('Get public default tools error:', error);
+    res.status(500).json({ error: '获取系统默认工具失败' });
+  }
+});
+
+// 获取系统默认工具 (管理员API - 包含更多详细信息)
+app.get('/api/admin/default-tools', authenticateAdmin, async (req, res) => {
+  try {
+    logAdminAction('GET_DEFAULT_TOOLS', req.user, { ip: req.ip });
+
+    // 如果系统配置文件不存在，返回空数组
+    if (!await fs.pathExists(DEFAULT_TOOLS_FILE)) {
+      return res.json({
+        success: true,
+        tools: [],
+        version: 0,
+        message: '系统默认工具配置为空'
+      });
+    }
+
+    const systemData = await fs.readJSON(DEFAULT_TOOLS_FILE);
+    res.json({
+      success: true,
+      tools: systemData.tools || [],
+      version: systemData.version || 0
+    });
+
+  } catch (error) {
+    console.error('Get default tools error:', error);
+    res.status(500).json({ error: '获取系统默认工具失败' });
+  }
+});
+
+// 保存系统默认工具
+app.post('/api/admin/default-tools', authenticateAdmin, async (req, res) => {
+  try {
+    const { tools, currentVersion } = req.body;
+
+    // 验证输入
+    if (!Array.isArray(tools)) {
+      return res.status(400).json({ error: '工具数据必须是数组格式' });
+    }
+
+    // 验证和清理每个工具的数据
+    const validatedTools = [];
+    for (const tool of tools) {
+      // 必需字段验证
+      if (!tool.name || typeof tool.name !== 'string' || tool.name.trim().length === 0) {
+        return res.status(400).json({ error: '工具名称不能为空' });
+      }
+      if (!tool.url || typeof tool.url !== 'string') {
+        return res.status(400).json({ error: '工具URL不能为空' });
+      }
+      if (!tool.category || typeof tool.category !== 'string') {
+        return res.status(400).json({ error: '工具分类不能为空' });
+      }
+
+      // 长度限制
+      if (tool.name.length > 100) {
+        return res.status(400).json({ error: '工具名称不能超过100个字符' });
+      }
+      if (tool.description && tool.description.length > 500) {
+        return res.status(400).json({ error: '工具描述不能超过500个字符' });
+      }
+
+      // URL格式验证
+      try {
+        new URL(tool.url);
+      } catch (error) {
+        return res.status(400).json({ error: `工具URL格式无效: ${tool.name}` });
+      }
+
+      // 清理和标准化数据
+      validatedTools.push({
+        id: tool.id || `system_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        name: tool.name.trim(),
+        url: tool.url.trim(),
+        category: tool.category.trim(),
+        description: tool.description ? tool.description.trim() : '',
+        icon: tool.icon || '🔗',
+        clickCount: typeof tool.clickCount === 'number' ? tool.clickCount : 0,
+        lastAccessed: new Date().toISOString(),
+        createdAt: tool.createdAt || new Date().toISOString(),
+        isPinned: Boolean(tool.isPinned)
+      });
+    }
+
+    logAdminAction('UPDATE_DEFAULT_TOOLS', req.user, {
+      ip: req.ip,
+      toolsCount: validatedTools.length,
+      currentVersion
+    });
+
+    // 确保文件存在以供文件锁使用
+    if (!await fs.pathExists(DEFAULT_TOOLS_FILE)) {
+      await fs.writeJSON(DEFAULT_TOOLS_FILE, { tools: [], version: 0 }, { spaces: 2 });
+    }
+
+    // 文件锁防止并发写入
+    const release = await lockfile.lock(DEFAULT_TOOLS_FILE, {
+      retries: 3,
+      minTimeout: 100,
+      maxTimeout: 500
+    });
+
+    try {
+      // 读取当前数据
+      const currentData = await fs.readJSON(DEFAULT_TOOLS_FILE);
+
+      // 版本冲突检测
+      if (currentVersion !== undefined && currentData.version !== currentVersion) {
+        return res.status(409).json({
+          error: '配置已被其他管理员修改，请刷新后重试',
+          currentVersion: currentData.version
+        });
+      }
+
+      // 创建备份
+      if (await fs.pathExists(DEFAULT_TOOLS_FILE)) {
+        const backupFile = `${DEFAULT_TOOLS_FILE}.backup.${Date.now()}`;
+        await fs.copy(DEFAULT_TOOLS_FILE, backupFile);
+      }
+
+      // 保存新数据
+      const newVersion = currentData.version + 1;
+      const systemData = {
+        tools: validatedTools,
+        version: newVersion,
+        updatedAt: new Date().toISOString(),
+        updatedBy: req.user.username
+      };
+
+      await fs.writeJSON(DEFAULT_TOOLS_FILE, systemData, { spaces: 2 });
+
+      res.json({
+        success: true,
+        version: newVersion,
+        message: `成功保存 ${validatedTools.length} 个默认工具`
+      });
+
+    } finally {
+      await release();
+    }
+
+  } catch (error) {
+    console.error('Save default tools error:', error);
+    res.status(500).json({ error: '保存系统默认工具失败' });
+  }
+});
+
+// 重置系统默认工具为静态默认数据
+app.post('/api/admin/default-tools/reset', authenticateAdmin, async (req, res) => {
+  try {
+    logAdminAction('RESET_DEFAULT_TOOLS', req.user, { ip: req.ip });
+
+    // 确保文件存在以供文件锁使用
+    if (!await fs.pathExists(DEFAULT_TOOLS_FILE)) {
+      await fs.writeJSON(DEFAULT_TOOLS_FILE, { tools: [], version: 0 }, { spaces: 2 });
+    }
+
+    // 文件锁防止并发操作
+    const release = await lockfile.lock(DEFAULT_TOOLS_FILE, {
+      retries: 3,
+      minTimeout: 100,
+      maxTimeout: 500
+    });
+
+    try {
+      // 创建备份
+      const backupFile = `${DEFAULT_TOOLS_FILE}.reset-backup.${Date.now()}`;
+      await fs.copy(DEFAULT_TOOLS_FILE, backupFile);
+      await fs.remove(DEFAULT_TOOLS_FILE);
+
+      res.json({
+        success: true,
+        message: '已重置为静态默认工具配置'
+      });
+
+    } finally {
+      await release();
+    }
+
+  } catch (error) {
+    console.error('Reset default tools error:', error);
+    res.status(500).json({ error: '重置系统默认工具失败' });
+  }
+});
+
 // 错误处理中间件
 app.use((error, req, res, next) => {
   console.error('Unhandled error:', error);
