@@ -9,7 +9,14 @@ import lockfile from 'proper-lockfile';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+// 强制要求JWT_SECRET环境变量，不允许使用不安全的默认值
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET || JWT_SECRET.length < 32) {
+  console.error('❌ SECURITY ERROR: JWT_SECRET environment variable must be set and at least 32 characters long');
+  console.error('   Please set JWT_SECRET in your environment before starting the server');
+  console.error('   Example: JWT_SECRET=your-very-long-and-secure-secret-key-here');
+  process.exit(1);
+}
 const DATA_DIR = path.join(process.cwd(), 'data/users');
 
 // 确保数据目录存在
@@ -75,13 +82,67 @@ app.use('/api', generalLimiter);
 // 用户登录失败计数（内存存储，重启清零）
 const loginAttempts = new Map();
 
+// Challenge 存储（内存存储，带过期时间）
+const challengeStore = new Map();
+
 // 工具函数
 function generateSalt() {
   return crypto.randomBytes(32).toString('hex');
 }
 
+// 生成确定性假salt以防止用户名枚举
+function generateDeterministicFakeSalt(username) {
+  const FAKE_SALT_SECRET = process.env.FAKE_SALT_SECRET || 'ops-dashboard-fake-salt-secret-key';
+  return crypto.createHmac('sha256', FAKE_SALT_SECRET)
+    .update(username)
+    .digest('hex');
+}
+
 function generateChallenge() {
   return crypto.randomBytes(16).toString('hex');
+}
+
+// 存储 challenge
+function storeChallenge(username, challenge) {
+  const challengeData = {
+    challenge,
+    timestamp: Date.now(),
+    used: false
+  };
+  challengeStore.set(username, challengeData);
+
+  // 5分钟后自动清理
+  setTimeout(() => {
+    challengeStore.delete(username);
+  }, 5 * 60 * 1000);
+}
+
+// 验证 challenge
+function validateChallenge(username, challenge) {
+  const challengeData = challengeStore.get(username);
+
+  if (!challengeData) {
+    return false; // challenge 不存在或已过期
+  }
+
+  if (challengeData.used) {
+    return false; // challenge 已被使用
+  }
+
+  if (challengeData.challenge !== challenge) {
+    return false; // challenge 不匹配
+  }
+
+  // 检查是否过期（5分钟）
+  const maxAge = 5 * 60 * 1000;
+  if (Date.now() - challengeData.timestamp > maxAge) {
+    challengeStore.delete(username);
+    return false;
+  }
+
+  // 标记为已使用
+  challengeData.used = true;
+  return true;
 }
 
 // 统一的密码哈希函数 - 与前端保持一致 (SHA-256)
@@ -213,14 +274,17 @@ app.get('/api/auth/challenge/:username', async (req, res) => {
       const meta = await fs.readJSON(userMetaFile);
       salt = meta.salt;
     } else {
-      // 用户不存在，生成假salt（防止用户枚举）
-      salt = generateSalt();
+      // 用户不存在，生成确定性假salt（防止通过salt一致性进行用户枚举）
+      salt = generateDeterministicFakeSalt(username);
     }
+
+    // 存储 challenge 用于后续验证
+    storeChallenge(username, challenge);
 
     res.json({
       salt,
-      challenge,
-      exists: userExists // 这里可以返回，因为注册需要知道
+      challenge
+      // 安全修复：移除exists字段以防止用户名枚举攻击
     });
 
   } catch (error) {
@@ -250,9 +314,9 @@ app.post('/api/auth/register', async (req, res) => {
     const userFile = getUserFilePath(username);
     const userMetaFile = getUserMetaFilePath(username);
 
-    // 检查用户是否已存在
+    // 安全修复：检查用户是否已存在，但使用通用错误信息防止用户名枚举
     if (await fs.pathExists(userMetaFile)) {
-      return res.status(400).json({ error: '用户名已存在' });
+      return res.status(400).json({ error: '注册失败，请检查用户名或密码' });
     }
 
     // 使用前端传递的salt，确保前后端使用相同的salt
@@ -296,8 +360,13 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { username, passwordHash, challenge } = req.body;
 
-    if (!username || !passwordHash) {
-      return res.status(400).json({ error: '用户名和密码不能为空' });
+    if (!username || !passwordHash || !challenge) {
+      return res.status(400).json({ error: '用户名、密码和challenge不能为空' });
+    }
+
+    // 验证 challenge
+    if (!validateChallenge(username, challenge)) {
+      return res.status(401).json({ error: 'Challenge无效或已过期，请重新获取' });
     }
 
     const userMetaFile = getUserMetaFilePath(username);
@@ -370,30 +439,29 @@ app.post('/api/auth/login', async (req, res) => {
 // 4. 保存用户数据
 app.post('/api/data/user', authenticateToken, async (req, res) => {
   try {
-    // 更详细的调试信息
-    console.log('🔍 详细请求信息:', {
-      contentType: req.headers['content-type'],
-      contentLength: req.headers['content-length'],
-      method: req.method,
-      url: req.url,
-      hasRawBody: !!req.rawBody,
-      bodyExists: !!req.body,
-      bodyType: typeof req.body,
-      bodyKeys: Object.keys(req.body || {}),
-      bodyStringified: JSON.stringify(req.body),
-      username: req.user?.username
-    });
+    // 安全的调试信息（仅开发环境且不包含敏感数据）
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 安全请求信息:', {
+        contentType: req.headers['content-type'],
+        contentLength: req.headers['content-length'],
+        method: req.method,
+        url: req.url,
+        bodyExists: !!req.body,
+        bodyType: typeof req.body,
+        bodyKeys: Object.keys(req.body || {}),
+        username: req.user?.username
+      });
 
-    console.log('🔍 后端接收请求:', {
-      hasBody: !!req.body,
-      bodyType: typeof req.body,
-      bodyKeys: Object.keys(req.body || {}),
-      encryptedDataExists: 'encryptedData' in (req.body || {}),
-      encryptedDataType: typeof req.body?.encryptedData,
-      encryptedDataLength: req.body?.encryptedData?.length,
-      currentVersion: req.body?.currentVersion,
-      username: req.user?.username
-    });
+      console.log('🔍 后端接收请求:', {
+        hasBody: !!req.body,
+        bodyType: typeof req.body,
+        bodyKeys: Object.keys(req.body || {}),
+        encryptedDataExists: 'encryptedData' in (req.body || {}),
+        encryptedDataLength: req.body?.encryptedData ? '[REDACTED - LENGTH: ' + req.body.encryptedData.length + ']' : 0,
+        currentVersion: req.body?.currentVersion,
+        username: req.user?.username
+      });
+    }
 
     const { encryptedData, currentVersion } = req.body;
     const { username } = req.user;

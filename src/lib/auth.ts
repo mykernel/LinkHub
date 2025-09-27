@@ -19,7 +19,7 @@ export interface User {
 export interface AuthChallenge {
   salt: string
   challenge: string
-  exists: boolean
+  // 安全修复：移除exists字段以防止用户名枚举攻击
 }
 
 export interface LoginResult {
@@ -53,12 +53,32 @@ async function apiRequest(url: string, options: RequestInit = {}): Promise<Respo
     headers
   };
 
-  console.log('🌐 API Request:', {
-    method: fetchOptions.method || 'GET',
-    url: fullUrl,
-    headers: fetchOptions.headers,
-    body: fetchOptions.body
-  });
+  // 安全的API请求日志（过滤敏感信息）
+  if (import.meta.env.DEV) {
+    const safeHeaders = { ...fetchOptions.headers };
+    if (safeHeaders.Authorization) {
+      safeHeaders.Authorization = '[REDACTED]';
+    }
+
+    let safeBody = fetchOptions.body;
+    if (typeof safeBody === 'string') {
+      try {
+        const bodyObj = JSON.parse(safeBody);
+        if (bodyObj.passwordHash) bodyObj.passwordHash = '[REDACTED]';
+        if (bodyObj.encryptedData) bodyObj.encryptedData = '[REDACTED - LENGTH: ' + bodyObj.encryptedData.length + ']';
+        safeBody = JSON.stringify(bodyObj);
+      } catch (e) {
+        safeBody = '[BODY - LENGTH: ' + safeBody.length + ']';
+      }
+    }
+
+    console.log('🌐 API Request:', {
+      method: fetchOptions.method || 'GET',
+      url: fullUrl,
+      headers: safeHeaders,
+      body: safeBody
+    });
+  }
 
   const response = await fetch(fullUrl, fetchOptions)
 
@@ -109,9 +129,8 @@ export async function registerUser(
     // 1. 获取挑战信息
     const challenge = await getAuthChallenge(username)
 
-    if (challenge.exists) {
-      return { success: false, error: '用户名已存在' }
-    }
+    // 安全修复：移除客户端exists检查，由服务器统一处理用户存在性
+    // 这样可以防止用户名枚举攻击
 
     // 2. 生成密码hash
     const passwordHash = await hashPassword(password, challenge.salt)
@@ -176,20 +195,21 @@ export async function loginUser(
     // 1. 获取认证挑战
     const challenge = await getAuthChallenge(username)
 
-    if (!challenge.exists) {
-      return { success: false, error: '用户名或密码错误' }
-    }
+    // 安全修改：移除客户端exists检查，让服务器统一处理用户不存在的情况
+    // 这样可以防止用户名枚举攻击
 
     // 2. 生成密码hash
     const passwordHash = await hashPassword(password, challenge.salt)
 
-    // 调试日志
-    console.log('Login Debug Info:')
-    console.log('- Username:', username)
-    console.log('- Password:', password)
-    console.log('- Salt:', challenge.salt)
-    console.log('- Generated Hash:', passwordHash)
-    console.log('- Challenge:', challenge.challenge)
+    // 安全调试日志（移除敏感信息）
+    if (import.meta.env.DEV) {
+      console.log('Login Debug Info:')
+      console.log('- Username:', username)
+      console.log('- Password: [REDACTED]')
+      console.log('- Salt Length:', challenge.salt?.length)
+      console.log('- Hash Generated:', !!passwordHash)
+      console.log('- Challenge Length:', challenge.challenge?.length)
+    }
 
     // 3. 发送登录请求
     const response = await apiRequest('/auth/login', {

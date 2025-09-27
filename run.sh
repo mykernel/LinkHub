@@ -172,6 +172,8 @@ start_backend() {
 
     # Start backend
     cd /root/ops-dashboard/server
+    # Set JWT_SECRET for security (required after security fix)
+    export JWT_SECRET="ops-dashboard-super-secure-jwt-secret-key-for-production-use-2024"
     nohup npm start > "$LOG_DIR/backend.log" 2>&1 &
     local pid=$!
     echo $pid > "$BACKEND_PID"
