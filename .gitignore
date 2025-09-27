@@ -1,1 +1,37 @@
 node_modules
+
+# TypeScript build cache
+*.tsbuildinfo
+
+# User data and sensitive files
+server/data/users/
+server/data/system/*.backup.*
+
+# Build artifacts
+dist/
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
