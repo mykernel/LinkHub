@@ -15,8 +15,8 @@ const DATA_DIR = path.join(process.cwd(), 'data/users');
 // 确保数据目录存在
 await fs.ensureDir(DATA_DIR);
 
-// 信任代理设置 - 用于正确获取客户端IP
-app.set('trust proxy', true);
+// 信任代理设置 - 用于正确获取客户端IP (更安全的配置)
+app.set('trust proxy', 1); // 信任第一个代理
 
 // 中间件
 app.use(cors());
@@ -769,6 +769,397 @@ app.post('/api/admin/users/:username/reset-password', authenticateAdmin, async (
   } catch (error) {
     console.error('Reset password error:', error);
     res.status(500).json({ error: '重置密码失败' });
+  }
+});
+
+// ============ 分类管理 API ============
+
+// 获取用户分类列表
+app.get('/api/categories', authenticateToken, async (req, res) => {
+  try {
+    const { username } = req.user;
+    const userFile = getUserFilePath(username);
+
+    // 默认分类（系统分类）
+    const defaultCategories = [
+      {
+        id: 'all',
+        name: '全部',
+        icon: '📊',
+        color: 'blue',
+        is_system: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        version: 1
+      },
+      {
+        id: 'favorites',
+        name: '收藏',
+        icon: '⭐',
+        color: 'yellow',
+        is_system: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        version: 1
+      },
+      {
+        id: 'monitoring',
+        name: '监控',
+        icon: '📈',
+        color: 'green',
+        is_system: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        version: 1
+      },
+      {
+        id: 'logging',
+        name: '日志',
+        icon: '📝',
+        color: 'orange',
+        is_system: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        version: 1
+      },
+      {
+        id: 'deployment',
+        name: '部署',
+        icon: '🚀',
+        color: 'purple',
+        is_system: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        version: 1
+      },
+      {
+        id: 'database',
+        name: '数据库',
+        icon: '🗄️',
+        color: 'red',
+        is_system: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        version: 1
+      },
+      {
+        id: 'documentation',
+        name: '文档',
+        icon: '📚',
+        color: 'cyan',
+        is_system: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        version: 1
+      },
+      {
+        id: 'network',
+        name: '网络',
+        icon: '🌐',
+        color: 'indigo',
+        is_system: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        version: 1
+      },
+      {
+        id: 'security',
+        name: '安全',
+        icon: '🔒',
+        color: 'yellow',
+        is_system: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        version: 1
+      }
+    ];
+
+    let userData = { categories: [] };
+
+    // 尝试读取用户数据
+    if (await fs.pathExists(userFile)) {
+      try {
+        const fileData = await fs.readJSON(userFile);
+        userData = fileData || { categories: [] };
+      } catch (error) {
+        console.error('Read user categories error:', error);
+      }
+    }
+
+    // 合并默认分类和用户自定义分类，过滤掉被禁用的系统分类
+    const userCategories = userData.categories || [];
+    const disabledSystemCategories = userData.disabledSystemCategories || [];
+    const filteredDefaultCategories = defaultCategories.filter(cat => !disabledSystemCategories.includes(cat.id));
+    const allCategories = [...filteredDefaultCategories, ...userCategories];
+
+    res.json({
+      success: true,
+      categories: allCategories
+    });
+
+  } catch (error) {
+    console.error('Get categories error:', error);
+    res.status(500).json({ error: '获取分类失败' });
+  }
+});
+
+// 创建新分类
+app.post('/api/categories', authenticateToken, async (req, res) => {
+  try {
+    const { username } = req.user;
+    const { name, icon, color } = req.body;
+
+    // 验证输入
+    if (!name || !icon || !color) {
+      return res.status(400).json({ error: '分类名称、图标和颜色都是必需的' });
+    }
+
+    if (name.length > 20) {
+      return res.status(400).json({ error: '分类名称不能超过20个字符' });
+    }
+
+    const userFile = getUserFilePath(username);
+    const lockOptions = { retries: 3, minTimeout: 100, maxTimeout: 1000 };
+
+    let release;
+    try {
+      release = await lockfile.lock(userFile, lockOptions);
+    } catch (lockError) {
+      console.error('Lock error:', lockError);
+      return res.status(500).json({ error: '系统繁忙，请稍后重试' });
+    }
+
+    try {
+      let userData = { tools: [], categories: [] };
+
+      if (await fs.pathExists(userFile)) {
+        userData = await fs.readJSON(userFile);
+        if (!userData.categories) {
+          userData.categories = [];
+        }
+      }
+
+      // 检查分类名称是否已存在
+      const existingCategory = userData.categories.find(cat => cat.name === name);
+      if (existingCategory) {
+        return res.status(400).json({ error: '分类名称已存在' });
+      }
+
+      // 创建新分类
+      const now = new Date().toISOString();
+      const newCategory = {
+        id: `custom_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        name,
+        icon,
+        color,
+        user_id: username,
+        is_system: false,
+        created_at: now,
+        updated_at: now,
+        version: 1
+      };
+
+      userData.categories.push(newCategory);
+      await fs.writeJSON(userFile, userData);
+
+      res.json({
+        success: true,
+        category: newCategory,
+        message: '分类创建成功'
+      });
+
+    } finally {
+      await release();
+    }
+
+  } catch (error) {
+    console.error('Create category error:', error);
+    res.status(500).json({ error: '创建分类失败' });
+  }
+});
+
+// 更新分类
+app.put('/api/categories/:id', authenticateToken, async (req, res) => {
+  try {
+    const { username } = req.user;
+    const { id } = req.params;
+    const { name, icon, color } = req.body;
+
+    // 特殊分类限制：不允许修改 'all' 和 'favorites' 分类
+    const protectedCategories = ['all', 'favorites'];
+    if (protectedCategories.includes(id)) {
+      return res.status(400).json({ error: '该分类不能被修改' });
+    }
+
+    // 验证输入
+    if (name && name.length > 20) {
+      return res.status(400).json({ error: '分类名称不能超过20个字符' });
+    }
+
+    const userFile = getUserFilePath(username);
+    const lockOptions = { retries: 3, minTimeout: 100, maxTimeout: 1000 };
+
+    let release;
+    try {
+      release = await lockfile.lock(userFile, lockOptions);
+    } catch (lockError) {
+      console.error('Lock error:', lockError);
+      return res.status(500).json({ error: '系统繁忙，请稍后重试' });
+    }
+
+    try {
+      if (!await fs.pathExists(userFile)) {
+        return res.status(404).json({ error: '分类不存在' });
+      }
+
+      const userData = await fs.readJSON(userFile);
+      if (!userData.categories) {
+        userData.categories = [];
+      }
+
+      const categoryIndex = userData.categories.findIndex(cat => cat.id === id);
+      if (categoryIndex === -1) {
+        return res.status(404).json({ error: '分类不存在' });
+      }
+
+      // 检查新名称是否与其他分类冲突
+      if (name && name !== userData.categories[categoryIndex].name) {
+        const existingCategory = userData.categories.find(cat => cat.name === name && cat.id !== id);
+        if (existingCategory) {
+          return res.status(400).json({ error: '分类名称已存在' });
+        }
+      }
+
+      // 更新分类
+      const updatedCategory = {
+        ...userData.categories[categoryIndex],
+        updated_at: new Date().toISOString(),
+        version: userData.categories[categoryIndex].version + 1
+      };
+
+      if (name !== undefined) updatedCategory.name = name;
+      if (icon !== undefined) updatedCategory.icon = icon;
+      if (color !== undefined) updatedCategory.color = color;
+
+      userData.categories[categoryIndex] = updatedCategory;
+      await fs.writeJSON(userFile, userData);
+
+      res.json({
+        success: true,
+        category: updatedCategory,
+        message: '分类更新成功'
+      });
+
+    } finally {
+      await release();
+    }
+
+  } catch (error) {
+    console.error('Update category error:', error);
+    res.status(500).json({ error: '更新分类失败' });
+  }
+});
+
+// 删除分类
+app.delete('/api/categories/:id', authenticateToken, async (req, res) => {
+  try {
+    const { username } = req.user;
+    const { id } = req.params;
+    const { target_category_id } = req.query;
+
+    // 特殊分类限制：不允许删除 'all' 和 'favorites' 分类
+    const protectedCategories = ['all', 'favorites'];
+    if (protectedCategories.includes(id)) {
+      return res.status(400).json({ error: '该分类不能被删除' });
+    }
+
+    const userFile = getUserFilePath(username);
+    const lockOptions = { retries: 3, minTimeout: 100, maxTimeout: 1000 };
+
+    let release;
+    try {
+      release = await lockfile.lock(userFile, lockOptions);
+    } catch (lockError) {
+      console.error('Lock error:', lockError);
+      return res.status(500).json({ error: '系统繁忙，请稍后重试' });
+    }
+
+    try {
+      if (!await fs.pathExists(userFile)) {
+        return res.status(404).json({ error: '分类不存在' });
+      }
+
+      const userData = await fs.readJSON(userFile);
+      if (!userData.categories) {
+        userData.categories = [];
+      }
+      if (!userData.tools) {
+        userData.tools = [];
+      }
+
+      // 查找要删除的分类（用户自定义分类）
+      const categoryIndex = userData.categories.findIndex(cat => cat.id === id);
+
+      // 检查是否为系统分类
+      const systemCategoryIds = ['monitoring', 'logging', 'deployment', 'database', 'documentation', 'network', 'security'];
+      const isSystemCategory = systemCategoryIds.includes(id);
+
+      if (categoryIndex === -1 && !isSystemCategory) {
+        return res.status(404).json({ error: '分类不存在' });
+      }
+
+      // 检查该分类下是否有工具
+      const toolsInCategory = userData.tools.filter(tool => tool.category === id);
+
+      if (toolsInCategory.length > 0) {
+        if (!target_category_id) {
+          return res.status(400).json({
+            error: '该分类下还有工具，请指定目标分类ID',
+            tools_count: toolsInCategory.length
+          });
+        }
+
+        // 验证目标分类是否存在
+        const systemCategoriesForValidation = ['monitoring', 'logging', 'deployment', 'database', 'documentation', 'network', 'security'];
+        const validTargetCategories = [...systemCategoriesForValidation, ...userData.categories.map(cat => cat.id)];
+        if (!validTargetCategories.includes(target_category_id)) {
+          return res.status(400).json({ error: '目标分类不存在' });
+        }
+
+        // 将工具重分配到目标分类
+        userData.tools = userData.tools.map(tool =>
+          tool.category === id ? { ...tool, category: target_category_id } : tool
+        );
+      }
+
+      // 删除分类
+      if (isSystemCategory) {
+        // 对于系统分类，添加到禁用列表中
+        if (!userData.disabledSystemCategories) {
+          userData.disabledSystemCategories = [];
+        }
+        if (!userData.disabledSystemCategories.includes(id)) {
+          userData.disabledSystemCategories.push(id);
+        }
+      } else {
+        // 对于用户自定义分类，直接删除
+        userData.categories.splice(categoryIndex, 1);
+      }
+      await fs.writeJSON(userFile, userData);
+
+      res.json({
+        success: true,
+        message: '分类删除成功',
+        moved_tools: toolsInCategory.length
+      });
+
+    } finally {
+      await release();
+    }
+
+  } catch (error) {
+    console.error('Delete category error:', error);
+    res.status(500).json({ error: '删除分类失败' });
   }
 });
 

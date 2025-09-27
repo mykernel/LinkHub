@@ -1,12 +1,25 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Tool, SortOption } from '../lib/types'
-import { DEFAULT_CATEGORIES } from '../lib/constants'
 import { useAuth } from '@/contexts/AuthContext'
 import { useLocalStorage } from './useLocalStorage'
+import { useCategories } from './useCategories'
 import defaultToolsData from '../data/defaultTools.json'
 
 export function useTools() {
   const { isAuthenticated, loadUserTools, saveUserTools } = useAuth()
+
+  // 集成分类管理
+  const {
+    categories,
+    isLoading: isCategoriesLoading,
+    error: categoriesError,
+    createCategory,
+    updateCategory,
+    deleteCategory,
+    getCategoryToolCount,
+    canManageCategory,
+    clearError: clearCategoriesError
+  } = useCategories()
 
   // 本地存储（仅供未登录用户使用）
   const [localStorageTools, setLocalStorageTools] = useLocalStorage<Tool[]>('ops_tools_local', defaultToolsData.map(tool => ({
@@ -310,7 +323,7 @@ export function useTools() {
     updateTools(prev => prev.filter(tool => !ids.includes(tool.id)))
   }
 
-  const updateCategory = (ids: string[], category: string) => {
+  const updateToolsCategory = (ids: string[], category: string) => {
     if (!isAuthenticated) return
     updateTools(prev => prev.map(tool =>
       ids.includes(tool.id) ? { ...tool, category } : tool
@@ -322,11 +335,11 @@ export function useTools() {
     tools: paginatedTools,
     allTools: currentTools,
     allFilteredTools: filteredTools,
-    categories: DEFAULT_CATEGORIES,
+    categories,
 
     // 状态
-    isLoading: isLoadingUserData,
-    isDataLoaded: !isAuthenticated || isUserDataLoaded,
+    isLoading: isLoadingUserData || isCategoriesLoading,
+    isDataLoaded: (!isAuthenticated || isUserDataLoaded),
 
     // 过滤和搜索
     searchQuery,
@@ -358,7 +371,16 @@ export function useTools() {
     togglePin,
     togglePinPosition,
     deleteMultiple,
+    updateToolsCategory,
+
+    // 分类管理
+    createCategory,
     updateCategory,
+    deleteCategory,
+    getCategoryToolCount,
+    canManageCategory,
+    categoriesError,
+    clearCategoriesError,
 
     // 数据同步
     refreshUserData: loadUserData

@@ -45,7 +45,14 @@ function App() {
     changePageSize,
     // View mode
     viewMode,
-    setViewMode
+    setViewMode,
+    // Category management
+    createCategory,
+    updateCategory,
+    deleteCategory,
+    canManageCategory,
+    // Data sync
+    refreshUserData
   } = useTools()
 
   // Keyboard shortcuts
@@ -63,6 +70,17 @@ function App() {
     categories: categories.slice(0, 9), // Only support shortcuts for first 9 categories
     onCategorySelect: setSelectedCategory
   })
+
+  // 包装删除分类函数，在删除成功后刷新工具数据
+  const handleDeleteCategory = async (id: string, targetCategoryId?: string) => {
+    const result = await deleteCategory(id, targetCategoryId)
+    if (result.success && result.movedTools && result.movedTools > 0) {
+      // 如果有工具被移动，刷新用户工具数据以确保数据同步
+      console.log(`🔄 分类删除成功，${result.movedTools} 个工具已移动，正在刷新工具数据...`)
+      await refreshUserData()
+    }
+    return result
+  }
 
   // Calculate tool counts for each category
   const toolCounts = useMemo(() => {
@@ -159,6 +177,11 @@ function App() {
                 selectedCategory={selectedCategory}
                 onSelectCategory={setSelectedCategory}
                 toolCounts={toolCounts}
+                allTools={allTools}
+                onCreateCategory={createCategory}
+                onUpdateCategory={updateCategory}
+                onDeleteCategory={handleDeleteCategory}
+                canManageCategory={canManageCategory}
               />
             </aside>
 
