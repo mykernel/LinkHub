@@ -1,10 +1,10 @@
-# 运维仪表板 (Ops Dashboard)
+# LinkHub - 智能书签管理系统
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/your-org/ops-dashboard)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/mykernel/LinkHub)
 [![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-green.svg)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-现代化全栈运维导航工具，专为DevOps团队设计的集中式书签管理系统。提供清洁、高效的方式来组织和访问各种运维工具和系统，具备用户认证、数据加密和云同步功能。
+现代化全栈智能书签管理系统，为个人和团队设计的集中式链接收藏书签。提供清洁、高效的方式来组织和访问各种网站链接，具备用户认证、数据加密和云同步功能。
 
 ## 🎯 项目亮点
 
@@ -38,8 +38,8 @@
 
 ```bash
 # 克隆项目
-git clone <repository-url>
-cd ops-dashboard
+git clone https://github.com/mykernel/LinkHub.git
+cd LinkHub
 
 # 安装前端依赖
 npm install
@@ -75,15 +75,15 @@ node init-admin.js
 
 ### 🎯 核心功能
 
-- **工具导航管理**: 分类组织、智能搜索、一键访问运维工具
+- **书签导航管理**: 分类组织、智能搜索、一键访问收藏链接
 - **数据云同步**: 端到端加密存储，多设备同步，离线可用
 - **使用统计分析**: 访问次数统计、智能排序、使用习惯分析
 - **响应式设计**: 支持桌面、平板、移动端，自适应界面布局
 
 ### ⚙️ 管理功能
 
-- **分类管理**: 创建、编辑、删除工具分类，拖拽排序
-- **工具管理**: 批量添加、编辑工具信息，标签管理
+- **分类管理**: 创建、编辑、删除书签分类，拖拽排序
+- **书签管理**: 批量添加、编辑书签信息，标签管理
 - **用户管理**: 账户创建、权限控制、使用统计
 - **数据管理**: 数据备份、恢复、版本控制、导入导出
 
@@ -113,9 +113,9 @@ node init-admin.js
 - **安全防护**: express-rate-limit API限流 + CORS跨域控制
 - **密码安全**: PBKDF2 密钥派生函数 + 安全随机盐
 
-### 开发工具
+### 开发书签
 
-- **构建工具**: Vite 6.0.1 超快构建
+- **构建书签**: Vite 6.0.1 超快构建
 - **类型检查**: TypeScript 严格模式
 - **代码规范**: ESLint + Prettier
 - **开发体验**: 热重载、源码映射、错误边界
@@ -157,14 +157,14 @@ node init-admin.js
 ### 前端核心模块
 
 #### 🎨 UI 组件层
-- **ToolCard**: 工具卡片展示，支持图标、描述、使用统计
+- **ToolCard**: 书签卡片展示，支持图标、描述、使用统计
 - **CategoryNav**: 分类导航，支持过滤、拖拽排序
 - **SearchBar**: 智能搜索，实时过滤、关键词高亮
-- **AddToolDialog**: 工具添加/编辑弹窗，表单验证
+- **AddToolDialog**: 书签添加/编辑弹窗，表单验证
 - **AdminDashboard**: 管理员控制面板，用户管理、系统设置
 
 #### ⚙️ 业务逻辑层
-- **useTools**: 工具数据管理钩子，CRUD操作、状态管理
+- **useTools**: 书签数据管理钩子，CRUD操作、状态管理
 - **useAuth**: 认证状态管理，登录/登出、令牌刷新
 - **useLocalStorage**: 本地存储钩子，数据持久化、自动同步
 - **useCategories**: 分类管理钩子，分类CRUD、排序功能
@@ -254,7 +254,7 @@ npm --version   # 应该 >= 9.0.0
 
 # 2. 克隆代码
 git clone <repository-url>
-cd ops-dashboard
+cd LinkHub
 
 # 3. 安装依赖
 npm install
@@ -369,7 +369,7 @@ server {
 ```bash
 # 1. 克隆项目
 git clone <repository-url>
-cd ops-dashboard
+cd LinkHub
 
 # 2. 安装依赖
 npm install
@@ -408,20 +408,20 @@ npm run preview
 
 - **TypeScript**: 启用严格模式，确保类型安全
 - **ESLint**: 遵循React和TypeScript最佳实践
-- **文件命名**: 组件使用PascalCase，工具函数使用camelCase
+- **文件命名**: 组件使用PascalCase，书签函数使用camelCase
 - **注释规范**: 使用JSDoc注释复杂函数和组件
 
 ### 项目结构
 
 ```
-ops-dashboard/
+LinkHub/
 ├── src/                    # 前端源码
 │   ├── components/         # React组件
 │   │   ├── ui/            # shadcn/ui基础组件
 │   │   ├── admin/         # 管理员专用组件
 │   │   └── ...            # 业务组件
 │   ├── hooks/             # 自定义React钩子
-│   ├── lib/               # 工具函数和类型定义
+│   ├── lib/               # 书签函数和类型定义
 │   ├── data/              # 静态数据和默认配置
 │   └── App.tsx            # 主应用组件
 ├── server/                # 后端源码
@@ -446,7 +446,7 @@ ops-dashboard/
 ### v1.0.0 (2025-09-27) 🎉
 
 #### 🚀 新功能
-- **完整全栈架构**: React前端 + Node.js后端的完整运维导航系统
+- **完整全栈架构**: React前端 + Node.js后端的完整书签导航系统
 - **用户认证系统**: JWT双令牌机制，支持注册、登录、自动刷新
 - **端到端加密**: 客户端AES-256-GCM加密，保护用户数据隐私
 - **管理员界面**: 完整的Admin管理系统，用户管理和系统设置
@@ -467,8 +467,8 @@ ops-dashboard/
 
 #### 🐛 修复问题
 - **UTF-8密码编码**: 修复包含中文字符的密码登录问题
-- **图钉功能修复**: 修复工具图钉功能的位置保持问题
-- **分类删除修复**: 修复删除分类时工具移动失败的问题
+- **图钉功能修复**: 修复书签图钉功能的位置保持问题
+- **分类删除修复**: 修复删除分类时书签移动失败的问题
 - **TypeScript类型**: 解决vite.config.ts和组件类型错误
 
 ### 版本历史
@@ -477,12 +477,12 @@ ops-dashboard/
 - **936a7ca**: 修复关键安全漏洞 - 完善认证系统安全防护
 - **593b337**: 解决vite.config.ts中的TypeScript类型异常
 - **5e6540a**: 实现完整分类管理功能
-- **bd572ab**: 修复删除分类时工具移动失败问题
-- **dd969d5**: 添加运维仪表板一键管理脚本
+- **bd572ab**: 修复删除分类时书签移动失败问题
+- **dd969d5**: 添加书签管理系统一键管理脚本
 - **7afbf39**: 添加Admin前端界面组件
 - **0cdc445**: 实现完整Admin管理系统与安全优化
 - **050cd51**: 实现完整用户认证系统和数据同步功能
-- **86f11f0**: 实现运维导航页面 v1.0 - 完整的工具管理系统
+- **86f11f0**: 实现书签导航页面 v1.0 - 完整的书签管理系统
 
 ## ❓ 常见问题
 
@@ -584,10 +584,10 @@ A: 检查以下方面：
 A: 备份server/data目录：
 ```bash
 # 创建备份
-tar -czf ops-dashboard-backup-$(date +%Y%m%d).tar.gz server/data/
+tar -czf LinkHub-backup-$(date +%Y%m%d).tar.gz server/data/
 
 # 恢复备份
-tar -xzf ops-dashboard-backup-20250927.tar.gz
+tar -xzf LinkHub-backup-20250927.tar.gz
 ```
 
 **Q: 如何重置所有数据？**
@@ -613,14 +613,14 @@ cd server && node init-admin.js
 
 A: 性能优化建议：
 1. **检查系统资源**: CPU、内存、磁盘使用情况
-2. **清理数据**: 删除不需要的工具和分类
+2. **清理数据**: 删除不需要的书签和分类
 3. **重启服务**: `./run.sh restart`
 4. **检查网络**: 确保前后端网络通信正常
 
 **Q: 大量数据时如何优化？**
 
 A: 考虑以下优化措施：
-1. **分页加载**: 大量工具时实现分页
+1. **分页加载**: 大量书签时实现分页
 2. **数据缓存**: 启用适当的缓存机制
 3. **索引优化**: 对频繁搜索的字段建立索引
 4. **定期清理**: 清理过期的会话和日志
@@ -631,7 +631,7 @@ A: 考虑以下优化措施：
 
 ## 🤝 支持与反馈
 
-- **问题报告**: 请在 [GitHub Issues](https://github.com/your-org/ops-dashboard/issues) 提交
+- **问题报告**: 请在 [GitHub Issues](https://github.com/your-org/LinkHub/issues) 提交
 - **功能请求**: 欢迎在 Issues 中提出新功能建议
 - **技术讨论**: 加入我们的技术交流群
 - **文档贡献**: 帮助我们改进文档和教程
@@ -643,5 +643,5 @@ A: 考虑以下优化措施：
 **维护状态**: 🔄 积极维护中
 
 <p align="center">
-  <i>🛠 为DevOps团队打造的现代化运维导航工具</i>
+  <i>🛠 为用户团队打造的现代化书签导航书签</i>
 </p>

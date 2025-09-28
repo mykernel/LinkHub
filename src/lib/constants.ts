@@ -96,6 +96,6 @@ export const DEFAULT_CATEGORIES: Category[] = [
 ]
 
 export const STORAGE_KEYS = {
-  TOOLS: 'ops-dashboard-tools',
-  SETTINGS: 'ops-dashboard-settings'
+  TOOLS: 'linkhub-tools',
+  SETTINGS: 'linkhub-settings'
 } as const

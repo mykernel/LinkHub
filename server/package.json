@@ -1,7 +1,7 @@
 {
-  "name": "ops-dashboard-server",
+  "name": "linkhub-server",
   "version": "1.0.0",
-  "description": "Backend API for ops dashboard",
+  "description": "Backend API for LinkHub bookmark management system",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",

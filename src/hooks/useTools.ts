@@ -30,7 +30,7 @@ export function useTools() {
   } = useCategories()
 
   // 本地存储（仅供未登录用户使用）
-  const [localStorageTools, setLocalStorageTools] = useLocalStorage<Tool[]>('ops_tools_local', defaultToolsData.map(tool => ({
+  const [localStorageTools, setLocalStorageTools] = useLocalStorage<Tool[]>('linkhub_tools_local', defaultToolsData.map(tool => ({
     ...tool,
     lastAccessed: new Date(tool.lastAccessed),
     createdAt: new Date(tool.createdAt)

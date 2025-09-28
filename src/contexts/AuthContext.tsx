@@ -103,8 +103,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           let userSalt: string | null = null
 
           try {
-            const encryptedPassword = sessionStorage.getItem('ops-encryption-password')
-            const storedSalt = sessionStorage.getItem('ops-encryption-salt')
+            const encryptedPassword = sessionStorage.getItem('linkhub-encryption-password')
+            const storedSalt = sessionStorage.getItem('linkhub-encryption-salt')
 
             if (encryptedPassword && storedSalt) {
               userPassword = base64ToUtf8(encryptedPassword)
@@ -170,8 +170,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // 保存加密凭据到sessionStorage（页面会话期间有效）
       try {
-        sessionStorage.setItem('ops-encryption-password', utf8ToBase64(password))
-        sessionStorage.setItem('ops-encryption-salt', result.salt!)
+        sessionStorage.setItem('linkhub-encryption-password', utf8ToBase64(password))
+        sessionStorage.setItem('linkhub-encryption-salt', result.salt!)
       } catch (error) {
         console.warn('Failed to save encryption credentials to sessionStorage:', error)
       }
@@ -236,8 +236,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // 清除 sessionStorage 中的加密凭据
     try {
-      sessionStorage.removeItem('ops-encryption-password')
-      sessionStorage.removeItem('ops-encryption-salt')
+      sessionStorage.removeItem('linkhub-encryption-password')
+      sessionStorage.removeItem('linkhub-encryption-salt')
     } catch (error) {
       console.warn('Failed to clear encryption credentials from sessionStorage:', error)
     }
