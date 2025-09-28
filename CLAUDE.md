@@ -8,7 +8,7 @@
 
 ## 项目概述
 
-这是一个 **运维仪表板** - 现代化全栈运维导航工具，专为DevOps团队设计的集中式书签管理系统。它提供了一种清洁、高效的方式来组织和访问各种运维工具和系统，具备用户认证、数据加密和云同步功能。
+这是一个 **书签管理系统** - 现代化全栈书签管理书签，专为个人和团队设计的集中式链接收藏系统。它提供了一种清洁、高效的方式来组织和访问各种网站链接，具备用户认证、数据加密和云同步功能。
 
 ## 技术栈
 
@@ -56,16 +56,16 @@ npm run preview      # 预览生产构建
 src/
 ├── components/
 │   ├── ui/              # shadcn/ui 可重用组件
-│   ├── ToolCard.tsx     # 工具显示卡片
+│   ├── ToolCard.tsx     # 书签显示卡片
 │   ├── CategoryNav.tsx  # 分类导航
-│   ├── AddToolDialog.tsx # 添加/编辑工具对话框
+│   ├── AddToolDialog.tsx # 添加/编辑书签对话框
 │   └── ...
 ├── hooks/
-│   ├── useTools.ts      # 中心工具管理逻辑
+│   ├── useTools.ts      # 中心书签管理逻辑
 │   └── useLocalStorage.ts # 持久化存储
 ├── lib/
 │   ├── types.ts         # TypeScript 接口定义
-│   └── utils.ts         # 工具函数
+│   └── utils.ts         # 书签函数
 └── data/
     └── categories.json  # 默认分类
 ```
@@ -73,12 +73,12 @@ src/
 ### 核心数据类型
 ```typescript
 interface Tool {
-  id: string          // 工具唯一标识符
-  name: string        // 工具名称
-  url: string         // 工具链接
+  id: string          // 书签唯一标识符
+  name: string        // 书签名称
+  url: string         // 书签链接
   category: string    // 所属分类
-  description?: string // 工具描述（可选）
-  icon?: string       // 工具图标（可选）
+  description?: string // 书签描述（可选）
+  icon?: string       // 书签图标（可选）
   clickCount: number  // 点击次数
   lastAccessed: Date  // 最后访问时间
   isPinned: boolean   // 是否固定
@@ -93,16 +93,16 @@ interface Category {
 
 ### 状态管理
 - **React 内置**：useState、useEffect、useMemo 管理组件状态
-- **中心业务逻辑**：`useTools` 钩子管理所有工具操作
+- **中心业务逻辑**：`useTools` 钩子管理所有书签操作
 - **持久化存储**：`useLocalStorage` 钩子提供自动数据持久化
 - **无外部状态库**：完全依赖 React 的内置功能
 
 ## 主要功能与实现说明
 
-### 工具管理
-- 工具存储在 localStorage 中，通过 `useTools` 钩子管理
+### 书签管理
+- 书签存储在 localStorage 中，通过 `useTools` 钩子管理
 - 分类为预定义（监控、日志、部署、数据库、文档、网络、安全）
-- 每个工具跟踪点击次数和访问模式，用于智能排序
+- 每个书签跟踪点击次数和访问模式，用于智能排序
 
 ### UI 组件
 - 使用 shadcn/ui 构建，保证一致性和可访问性
@@ -111,7 +111,7 @@ interface Category {
 - 搜索和筛选功能
 
 ### 数据流
-1. `useTools` 钩子管理所有工具状态和操作
+1. `useTools` 钩子管理所有书签状态和操作
 2. 组件通过 props 接收数据，通过回调函数发送事件
 3. 更改自动持久化到 localStorage 和加密云存储
 4. UI 通过 React 状态系统响应式更新
@@ -208,7 +208,7 @@ const base64ToUtf8 = (str) => {
 };
 ```
 
-### 问题诊断工具
+### 问题诊断书签
 
 **快速检测脚本：**
 在浏览器控制台运行以检测当前问题：
@@ -216,9 +216,9 @@ const base64ToUtf8 = (str) => {
 ```javascript
 // 检查认证状态
 console.log('认证状态:', {
-  isAuthenticated: !!localStorage.getItem('ops-user'),
-  hasEncryptionKey: !!sessionStorage.getItem('ops-encryption-password'),
-  tokenExists: !!localStorage.getItem('ops-user-token')
+  isAuthenticated: !!localStorage.getItem('linkhub-user'),
+  hasEncryptionKey: !!sessionStorage.getItem('linkhub-encryption-password'),
+  tokenExists: !!localStorage.getItem('linkhub-user-token')
 });
 
 // 检查最近的API请求

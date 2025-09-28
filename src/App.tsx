@@ -130,16 +130,16 @@ function App() {
         <header className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">运维导航页面</h1>
+              <h1 className="text-3xl font-bold text-foreground">LinkHub - 智能书签管理</h1>
               <p className="text-muted-foreground mt-2">
                 {isAuthenticated ? (
                   <>
-                    欢迎回来，{user?.username} • 共 {allTools.length} 个工具
+                    欢迎回来，{user?.username} • 共 {allTools.length} 个书签
                   </>
                 ) : (
                   <>
-                    快速访问运维工具和系统 • 共 {allTools.length} 个工具 •
-                    <span className="text-orange-500 ml-1">登录后可管理工具</span>
+                    快速访问收藏的网站链接 • 共 {allTools.length} 个书签 •
+                    <span className="text-orange-500 ml-1">登录后可管理书签</span>
                   </>
                 )}
               </p>

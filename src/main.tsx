@@ -8,7 +8,7 @@ import { AuthProvider } from './contexts/AuthContext'
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider>
-      <ThemeProvider defaultTheme="system" storageKey="ops-dashboard-theme">
+      <ThemeProvider defaultTheme="system" storageKey="linkhub-theme">
         <App />
       </ThemeProvider>
     </AuthProvider>

@@ -38,3 +38,12 @@ pids/
 
 # Documentation files to ignore
 初始化链接.md
+
+# AI assistant configuration
+.ai-rules/
+.claude/
+
+# Test and development files
+test-auth.js
+*.test.js
+*.spec.js

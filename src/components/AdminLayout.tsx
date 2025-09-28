@@ -16,7 +16,7 @@ export function AdminLayout() {
   const navigation = [
     { id: 'dashboard' as AdminView, name: '系统概览', icon: BarChart3 },
     { id: 'users' as AdminView, name: '用户管理', icon: Users },
-    { id: 'default-tools' as AdminView, name: '默认工具', icon: Wrench },
+    { id: 'default-tools' as AdminView, name: '默认书签', icon: Wrench },
     { id: 'settings' as AdminView, name: '系统设置', icon: Settings },
   ]
 
@@ -51,7 +51,7 @@ export function AdminLayout() {
                 <span className="text-white font-bold text-sm">A</span>
               </div>
               <h1 className="text-xl font-bold text-foreground">
-                [ADMIN] 运维仪表板管理后台
+                [ADMIN] LinkHub 管理后台
               </h1>
             </div>
           </div>
