@@ -92,7 +92,7 @@ function generateSalt() {
 
 // 生成确定性假salt以防止用户名枚举
 function generateDeterministicFakeSalt(username) {
-  const FAKE_SALT_SECRET = process.env.FAKE_SALT_SECRET || 'ops-dashboard-fake-salt-secret-key';
+  const FAKE_SALT_SECRET = process.env.FAKE_SALT_SECRET || 'linkhub-fake-salt-secret-key';
   return crypto.createHmac('sha256', FAKE_SALT_SECRET)
     .update(username)
     .digest('hex');

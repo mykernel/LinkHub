@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# Ops Dashboard Management Script
+# LinkHub Management Script
 # Used to start, stop, restart frontend and backend services
 
 # Configuration
 FRONTEND_PORT=5173
 BACKEND_PORT=3001
-PID_DIR="/tmp/ops-dashboard"
+PID_DIR="/tmp/linkhub"
 FRONTEND_PID="$PID_DIR/frontend.pid"
 BACKEND_PID="$PID_DIR/backend.pid"
 LOG_DIR="$PID_DIR/logs"
@@ -251,7 +251,7 @@ stop_service() {
 
 # Start all services
 start() {
-    log_info "Starting Ops Dashboard..."
+    log_info "Starting LinkHub..."
     echo
 
     local success=true
@@ -283,7 +283,7 @@ start() {
 
 # Stop all services
 stop() {
-    log_info "Stopping Ops Dashboard..."
+    log_info "Stopping LinkHub..."
     echo
 
     local success=true
@@ -311,7 +311,7 @@ stop() {
 
 # Restart all services
 restart() {
-    log_info "Restarting Ops Dashboard..."
+    log_info "Restarting LinkHub..."
     echo
 
     stop
@@ -358,7 +358,7 @@ logs() {
 
 # Show help
 help() {
-    echo "Ops Dashboard Management Script"
+    echo "LinkHub Management Script"
     echo
     echo "Usage: $0 {start|stop|restart|status|logs}"
     echo

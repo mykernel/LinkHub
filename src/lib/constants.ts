@@ -24,9 +24,9 @@ export const DEFAULT_CATEGORIES: Category[] = [
     version: 1
   },
   {
-    id: 'monitoring',
-    name: '监控',
-    icon: '📈',
+    id: 'social',
+    name: '社交媒体',
+    icon: '📏',
     color: 'green',
     is_system: true,
     created_at: now,
@@ -34,9 +34,9 @@ export const DEFAULT_CATEGORIES: Category[] = [
     version: 1
   },
   {
-    id: 'logging',
-    name: '日志',
-    icon: '📝',
+    id: 'news',
+    name: '新闻资讯',
+    icon: '📰',
     color: 'orange',
     is_system: true,
     created_at: now,
@@ -44,9 +44,9 @@ export const DEFAULT_CATEGORIES: Category[] = [
     version: 1
   },
   {
-    id: 'deployment',
-    name: '部署',
-    icon: '🚀',
+    id: 'tools',
+    name: '在线工具',
+    icon: '🔧',
     color: 'purple',
     is_system: true,
     created_at: now,
@@ -54,9 +54,9 @@ export const DEFAULT_CATEGORIES: Category[] = [
     version: 1
   },
   {
-    id: 'database',
-    name: '数据库',
-    icon: '🗄️',
+    id: 'entertainment',
+    name: '娱乐影音',
+    icon: '🎬',
     color: 'red',
     is_system: true,
     created_at: now,
@@ -74,9 +74,9 @@ export const DEFAULT_CATEGORIES: Category[] = [
     version: 1
   },
   {
-    id: 'network',
-    name: '网络',
-    icon: '🌐',
+    id: 'education',
+    name: '学习教育',
+    icon: '🎓',
     color: 'indigo',
     is_system: true,
     created_at: now,
@@ -84,10 +84,10 @@ export const DEFAULT_CATEGORIES: Category[] = [
     version: 1
   },
   {
-    id: 'security',
-    name: '安全',
-    icon: '🔒',
-    color: 'yellow',
+    id: 'shopping',
+    name: '购物商城',
+    icon: '🛍️',
+    color: 'pink',
     is_system: true,
     created_at: now,
     updated_at: now,

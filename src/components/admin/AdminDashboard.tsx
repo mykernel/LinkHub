@@ -92,7 +92,7 @@ export function AdminDashboard() {
       <div>
         <h1 className="text-3xl font-bold text-foreground">系统概览</h1>
         <p className="text-muted-foreground mt-2">
-          实时监控系统运行状态和用户活动情况
+          管理系统用户、书签和统计信息
         </p>
       </div>
 
