@@ -135,7 +135,6 @@ start_frontend() {
     fi
 
     # Start frontend
-    cd /root/LinkHub
     nohup npm run dev > "$LOG_DIR/frontend.log" 2>&1 &
     local pid=$!
     echo $pid > "$FRONTEND_PID"
@@ -171,7 +170,7 @@ start_backend() {
     fi
 
     # Start backend
-    cd /root/LinkHub/server
+    cd ./server
     # Set JWT_SECRET for security (required after security fix)
     # WARNING: This is a default development key. Change for production!
     export JWT_SECRET="${JWT_SECRET:-linkhub-development-jwt-secret-key-change-in-production-2024}"
