@@ -35,3 +35,6 @@ pids/
 *.pid
 *.seed
 *.pid.lock
+
+# Documentation files to ignore
+初始化链接.md
