@@ -135,7 +135,7 @@ start_frontend() {
     fi
 
     # Start frontend
-    cd /root/ops-dashboard
+    cd /root/LinkHub
     nohup npm run dev > "$LOG_DIR/frontend.log" 2>&1 &
     local pid=$!
     echo $pid > "$FRONTEND_PID"
@@ -171,9 +171,10 @@ start_backend() {
     fi
 
     # Start backend
-    cd /root/ops-dashboard/server
+    cd /root/LinkHub/server
     # Set JWT_SECRET for security (required after security fix)
-    export JWT_SECRET="ops-dashboard-super-secure-jwt-secret-key-for-production-use-2024"
+    # WARNING: This is a default development key. Change for production!
+    export JWT_SECRET="${JWT_SECRET:-linkhub-development-jwt-secret-key-change-in-production-2024}"
     nohup npm start > "$LOG_DIR/backend.log" 2>&1 &
     local pid=$!
     echo $pid > "$BACKEND_PID"
