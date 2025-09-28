@@ -175,7 +175,7 @@ start_backend() {
     # Set JWT_SECRET for security (required after security fix)
     # WARNING: This is a default development key. Change for production!
     export JWT_SECRET="${JWT_SECRET:-linkhub-development-jwt-secret-key-change-in-production-2024}"
-    nohup npm start > "$LOG_DIR/backend.log" 2>&1 &
+    nohup npm run dev > "$LOG_DIR/backend.log" 2>&1 &
     local pid=$!
     echo $pid > "$BACKEND_PID"
 
