@@ -40,6 +40,7 @@ export function useTools() {
   const [userTools, setUserTools] = useState<Tool[]>([])
   const [isUserDataLoaded, setIsUserDataLoaded] = useState(false)
   const [isLoadingUserData, setIsLoadingUserData] = useState(false)
+  const [isUsingFallbackData, setIsUsingFallbackData] = useState(false) // 标记是否使用了fallback数据
 
   // 其他状态
   const [searchQuery, setSearchQuery] = useState('')
@@ -54,20 +55,19 @@ export function useTools() {
     if (isAuthenticated && hasEncryptionCredentials && !isUserDataLoaded && !isLoadingUserData) {
       // 完整认证凭据下的首次加载
       loadUserData()
-    } else if (isAuthenticated && hasEncryptionCredentials && isUserDataLoaded && !isLoadingUserData) {
-      // 重试逻辑：当认证凭据变为完整时，检查是否需要重新加载
-      // 如果当前用户工具为空或仅包含默认数据，则重新尝试加载
-      if (userTools.length === 0 || userTools.every(tool => tool.id.includes('user_copy_') || tool.id.includes('user_error_'))) {
-        console.log('[useTools] 检测到默认数据，认证凭据完整后重新尝试加载用户数据')
-        setIsUserDataLoaded(false) // 重置标志以允许重新加载
-        loadUserData()
-      }
+    } else if (isAuthenticated && hasEncryptionCredentials && isUserDataLoaded && !isLoadingUserData && isUsingFallbackData) {
+      // 重试逻辑：当认证凭据变为完整时，且当前使用的是fallback数据，则重新尝试加载真实数据
+      console.log('[useTools] 检测到fallback数据，认证凭据完整后重新尝试加载用户数据')
+      setIsUserDataLoaded(false) // 重置标志以允许重新加载
+      setIsUsingFallbackData(false) // 清除fallback标志
+      loadUserData()
     } else if (!isAuthenticated) {
       // 未登录时重置用户数据状态
       setUserTools([])
       setIsUserDataLoaded(false)
+      setIsUsingFallbackData(false) // 重置fallback标志
     }
-  }, [isAuthenticated, hasEncryptionCredentials, isUserDataLoaded, isLoadingUserData, userTools])
+  }, [isAuthenticated, hasEncryptionCredentials, isUserDataLoaded, isLoadingUserData, isUsingFallbackData])
 
   const loadUserData = async () => {
     setIsLoadingUserData(true)
@@ -81,6 +81,7 @@ export function useTools() {
           createdAt: new Date(tool.createdAt)
         })))
         setIsUserDataLoaded(true)
+        setIsUsingFallbackData(false) // 成功加载真实数据，清除fallback标志
       } else {
         console.error('Failed to load user tools:', result.error)
 
@@ -89,6 +90,7 @@ export function useTools() {
           console.log('[useTools] 认证凭据不完整，等待凭据准备就绪后重试')
           // 不设置isUserDataLoaded=true，让重试机制有机会工作
           setIsUserDataLoaded(false)
+          // 不设置fallback标志，因为这不是真正的fallback数据
         } else {
           // 真正的加载失败，使用默认数据作为降级
           if (systemDefaultTools.length > 0) {
@@ -120,6 +122,7 @@ export function useTools() {
             }
           }
           setIsUserDataLoaded(true)
+          setIsUsingFallbackData(true) // 标记使用了fallback数据
         }
       }
     } catch (error) {
@@ -130,6 +133,7 @@ export function useTools() {
       if (errorMessage.includes('未登录') || errorMessage.includes('认证') || errorMessage.includes('credential')) {
         console.log('[useTools] 认证异常，等待凭据准备就绪后重试')
         setIsUserDataLoaded(false)
+        // 不设置fallback标志，因为这不是真正的fallback数据
       } else {
         // 其他异常，使用默认工具作为降级
         if (systemDefaultTools.length > 0) {
@@ -151,6 +155,7 @@ export function useTools() {
           setUserTools([])
         }
         setIsUserDataLoaded(true)
+        setIsUsingFallbackData(true) // 标记使用了fallback数据
       }
     } finally {
       setIsLoadingUserData(false)
