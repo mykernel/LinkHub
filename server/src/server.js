@@ -352,7 +352,10 @@ app.post('/api/auth/register', async (req, res) => {
       encryptedData: initialEncryptedData || null,
       version: 1,
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      categories: [],
+      disabledSystemCategories: [],
+      tools: []
     };
 
     // 原子写入
@@ -502,21 +505,27 @@ app.post('/api/data/user', authenticateToken, async (req, res) => {
 
     try {
       // 读取当前数据检查版本冲突
-      const currentData = await fs.readJSON(userFile);
+      let currentData = {};
+      if (await fs.pathExists(userFile)) {
+        currentData = await fs.readJSON(userFile);
+      }
 
-      if (currentVersion && currentData.version !== currentVersion) {
+      const currentVersionValue = typeof currentData.version === 'number' ? currentData.version : 0;
+
+      if (currentVersion && currentVersionValue !== currentVersion) {
         return res.status(409).json({
           error: '数据版本冲突，请刷新后重试',
-          currentVersion: currentData.version
+          currentVersion: currentVersionValue
         });
       }
 
       // 更新数据
-      const newVersion = currentData.version + 1;
+      const newVersion = currentVersionValue + 1;
       const updatedData = {
+        ...currentData,
         encryptedData,
         version: newVersion,
-        createdAt: currentData.createdAt,
+        createdAt: currentData.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
 
@@ -563,19 +572,63 @@ app.get('/api/data/user', authenticateToken, async (req, res) => {
 });
 
 // 6. Token刷新
-app.post('/api/auth/refresh', authenticateToken, (req, res) => {
-  const { username } = req.user;
+app.post('/api/auth/refresh', async (req, res) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
 
-  const newToken = jwt.sign(
-    { username: username, userId: username },
-    JWT_SECRET,
-    { expiresIn: '2h' }
-  );
+    if (!token) {
+      return res.status(401).json({ error: '访问令牌缺失' });
+    }
 
-  res.json({
-    success: true,
-    token: newToken
-  });
+    let decodedToken;
+    try {
+      decodedToken = jwt.verify(token, JWT_SECRET, { ignoreExpiration: true });
+    } catch (error) {
+      return res.status(403).json({ error: '访问令牌无效' });
+    }
+
+    if (!decodedToken || typeof decodedToken === 'string' || !decodedToken.username) {
+      return res.status(400).json({ error: '令牌数据无效' });
+    }
+
+    const { username, exp } = decodedToken;
+
+    const userMetaFile = getUserMetaFilePath(username);
+
+    if (!await fs.pathExists(userMetaFile)) {
+      return res.status(404).json({ error: '用户不存在' });
+    }
+
+    const userMeta = await fs.readJSON(userMetaFile);
+
+    if (userMeta.disabled) {
+      return res.status(403).json({ error: '账户已被禁用' });
+    }
+
+    // 限制刷新窗口 - 允许在过期后的一定时间内刷新
+    if (typeof exp === 'number') {
+      const expiredAt = exp * 1000;
+      const maxRefreshWindowMs = 7 * 24 * 60 * 60 * 1000; // 7天
+      if (Date.now() - expiredAt > maxRefreshWindowMs) {
+        return res.status(403).json({ error: '刷新令牌已过期' });
+      }
+    }
+
+    const newToken = jwt.sign(
+      { username: username, userId: userMeta.username },
+      JWT_SECRET,
+      { expiresIn: '2h' }
+    );
+
+    res.json({
+      success: true,
+      token: newToken
+    });
+  } catch (error) {
+    console.error('Token refresh error:', error);
+    res.status(500).json({ error: 'Token刷新失败' });
+  }
 });
 
 // 健康检查

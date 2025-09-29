@@ -58,6 +58,37 @@ export function useCategories() {
   const [error, setError] = useState<string | null>(null)
   const [isDataLoaded, setIsDataLoaded] = useState(false)
 
+  // 分类缓存键名
+  const CACHE_KEY = `linkhub-categories-${isAuthenticated ? 'user' : 'guest'}`
+
+  // 从本地缓存加载分类
+  const loadFromCache = useCallback(() => {
+    try {
+      const cached = localStorage.getItem(CACHE_KEY)
+      if (cached) {
+        const cachedData = JSON.parse(cached)
+        const categoriesWithDates = cachedData.map((cat: any) => ({
+          ...cat,
+          created_at: new Date(cat.created_at),
+          updated_at: new Date(cat.updated_at)
+        }))
+        return categoriesWithDates
+      }
+    } catch (error) {
+      console.warn('Failed to load categories from cache:', error)
+    }
+    return null
+  }, [CACHE_KEY])
+
+  // 保存分类到本地缓存
+  const saveToCache = useCallback((categoriesToCache: Category[]) => {
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify(categoriesToCache))
+    } catch (error) {
+      console.warn('Failed to save categories to cache:', error)
+    }
+  }, [CACHE_KEY])
+
   // 获取分类列表
   const fetchCategories = useCallback(async () => {
     if (!isAuthenticated) {
@@ -84,12 +115,22 @@ export function useCategories() {
         }))
 
         setCategories(categoriesWithDates)
+        // 成功获取后保存到缓存
+        saveToCache(categoriesWithDates)
         setIsDataLoaded(true)
       } else {
         console.error('Failed to fetch categories:', response.error)
         setError(response.error || '获取分类失败')
-        // 失败时使用默认分类
-        setCategories(DEFAULT_CATEGORIES)
+
+        // 优先使用缓存，避免丢失用户设置
+        const cachedCategories = loadFromCache()
+        if (cachedCategories) {
+          console.log('📋 使用缓存的分类数据，避免丢失用户设置')
+          setCategories(cachedCategories)
+        } else {
+          console.log('📋 无缓存数据，回退到默认分类')
+          setCategories(DEFAULT_CATEGORIES)
+        }
         setIsDataLoaded(true)
       }
     } catch (error) {
@@ -98,8 +139,16 @@ export function useCategories() {
         ? '服务暂时不可用，请稍后重试'
         : error instanceof Error ? error.message : '网络错误，请重试'
       setError(errorMsg)
-      // 错误时使用默认分类
-      setCategories(DEFAULT_CATEGORIES)
+
+      // 网络错误时也优先使用缓存
+      const cachedCategories = loadFromCache()
+      if (cachedCategories) {
+        console.log('📋 网络错误，使用缓存的分类数据')
+        setCategories(cachedCategories)
+      } else {
+        console.log('📋 网络错误且无缓存，回退到默认分类')
+        setCategories(DEFAULT_CATEGORIES)
+      }
       setIsDataLoaded(true)
     } finally {
       setIsLoading(false)
@@ -129,7 +178,10 @@ export function useCategories() {
         }
 
         // 乐观更新：立即添加到本地状态
-        setCategories(prev => [...prev, newCategory])
+        const updatedCategories = [...categories, newCategory]
+        setCategories(updatedCategories)
+        // 同步更新缓存
+        saveToCache(updatedCategories)
 
         return { success: true, category: newCategory }
       } else {
@@ -169,9 +221,12 @@ export function useCategories() {
         }
 
         // 乐观更新：立即更新本地状态
-        setCategories(prev => prev.map(cat =>
+        const updatedCategories = categories.map(cat =>
           cat.id === id ? updatedCategory : cat
-        ))
+        )
+        setCategories(updatedCategories)
+        // 同步更新缓存
+        saveToCache(updatedCategories)
 
         return { success: true, category: updatedCategory }
       } else {
@@ -210,7 +265,10 @@ export function useCategories() {
 
       if (response.success) {
         // 乐观更新：立即从本地状态中移除
-        setCategories(prev => prev.filter(cat => cat.id !== id))
+        const updatedCategories = categories.filter(cat => cat.id !== id)
+        setCategories(updatedCategories)
+        // 关键：同步更新缓存，保存用户的删除操作
+        saveToCache(updatedCategories)
 
         return {
           success: true,
@@ -247,17 +305,40 @@ export function useCategories() {
     return isAuthenticated && category.id !== 'all' && category.id !== 'favorites'
   }, [isAuthenticated])
 
-  // 自动加载分类数据
+  // 初始化时优先从缓存加载，提高启动速度
   useEffect(() => {
     if (!isDataLoaded) {
-      fetchCategories()
+      // 如果已登录，先尝试从缓存加载，然后再从API获取最新数据
+      if (isAuthenticated) {
+        const cachedCategories = loadFromCache()
+        if (cachedCategories) {
+          console.log('🚀 启动时从缓存加载分类数据')
+          setCategories(cachedCategories)
+          setIsDataLoaded(true)
+          // 后台静默更新
+          fetchCategories()
+        } else {
+          fetchCategories()
+        }
+      } else {
+        fetchCategories()
+      }
     }
-  }, [isDataLoaded, fetchCategories])
+  }, [isDataLoaded, isAuthenticated, fetchCategories, loadFromCache])
 
-  // 当认证状态改变时重新加载
+  // 当认证状态改变时重新加载和清理缓存
   useEffect(() => {
     setIsDataLoaded(false)
-  }, [isAuthenticated])
+    // 认证状态变化时清理旧缓存
+    if (!isAuthenticated) {
+      try {
+        localStorage.removeItem(CACHE_KEY)
+        console.log('🧹 已清理分类缓存')
+      } catch (error) {
+        console.warn('清理分类缓存失败:', error)
+      }
+    }
+  }, [isAuthenticated, CACHE_KEY])
 
   return {
     // 数据

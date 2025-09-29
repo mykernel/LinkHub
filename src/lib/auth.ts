@@ -4,7 +4,7 @@
  */
 
 import { hashPassword, encryptData, decryptData } from './crypto'
-import { fetchWithRetry, fetchJsonWithRetry, retryPresets } from './api-retry'
+import { fetchWithRetry, retryPresets } from './api-retry'
 import defaultToolsData from '../../shared/default-tools.json'
 
 const API_BASE = import.meta.env.DEV

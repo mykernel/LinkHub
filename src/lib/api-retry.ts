@@ -7,17 +7,17 @@ interface RetryOptions {
   maxRetries?: number
   retryDelay?: number
   retryDelayMultiplier?: number
-  retryableErrors?: number[]
+  retryableErrors?: readonly number[]
   onRetry?: (attempt: number, error: any) => void
 }
 
-const DEFAULT_OPTIONS: Required<RetryOptions> = {
+const DEFAULT_OPTIONS = {
   maxRetries: 3,
   retryDelay: 100, // ms
   retryDelayMultiplier: 2, // 指数退避
-  retryableErrors: [502, 503, 504, 0], // 网关错误和网络错误
+  retryableErrors: [502, 503, 504, 0] as const, // 网关错误和网络错误
   onRetry: () => {}
-}
+} as const
 
 /**
  * 延迟函数
@@ -28,7 +28,7 @@ const delay = (ms: number): Promise<void> =>
 /**
  * 检查是否应该重试
  */
-function shouldRetry(error: any, retryableErrors: number[]): boolean {
+function shouldRetry(error: any, retryableErrors: readonly number[]): boolean {
   // 网络错误（fetch 失败）
   if (error instanceof TypeError && error.message.includes('fetch')) {
     return true
