@@ -4,7 +4,7 @@
  */
 
 import { hashPassword, encryptData, decryptData } from './crypto'
-import defaultToolsData from '../data/defaultTools.json'
+import defaultToolsData from '../../shared/default-tools.json'
 
 const API_BASE = import.meta.env.DEV
   ? 'http://localhost:3001/api'

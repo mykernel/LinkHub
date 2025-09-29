@@ -9,6 +9,8 @@ import lockfile from 'proper-lockfile';
 
 // 导入统一的分类定义
 import defaultCategoriesData from '../../shared/default-categories.json' assert { type: 'json' };
+// 导入统一的默认工具定义
+import defaultToolsData from '../../shared/default-tools.json' assert { type: 'json' };
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -1139,13 +1141,19 @@ await fs.ensureDir(SYSTEM_DATA_DIR);
 // 获取系统默认工具 (公开API - 供所有用户访问)
 app.get('/api/default-tools', async (_req, res) => {
   try {
-    // 如果系统配置文件不存在，返回空数组
+    // 如果系统配置文件不存在，使用统一的默认工具数据
     if (!await fs.pathExists(DEFAULT_TOOLS_FILE)) {
+      const fallbackTools = defaultToolsData.map(tool => ({
+        ...tool,
+        lastAccessed: new Date(tool.lastAccessed),
+        createdAt: new Date(tool.createdAt)
+      }));
+
       return res.json({
         success: true,
-        tools: [],
+        tools: fallbackTools,
         version: 0,
-        message: '系统默认工具配置为空'
+        message: '使用统一默认工具配置'
       });
     }
 
@@ -1167,13 +1175,19 @@ app.get('/api/admin/default-tools', authenticateAdmin, async (req, res) => {
   try {
     logAdminAction('GET_DEFAULT_TOOLS', req.user, { ip: req.ip });
 
-    // 如果系统配置文件不存在，返回空数组
+    // 如果系统配置文件不存在，使用统一的默认工具数据
     if (!await fs.pathExists(DEFAULT_TOOLS_FILE)) {
+      const fallbackTools = defaultToolsData.map(tool => ({
+        ...tool,
+        lastAccessed: new Date(tool.lastAccessed),
+        createdAt: new Date(tool.createdAt)
+      }));
+
       return res.json({
         success: true,
-        tools: [],
+        tools: fallbackTools,
         version: 0,
-        message: '系统默认工具配置为空'
+        message: '使用统一默认工具配置'
       });
     }
 

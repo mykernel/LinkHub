@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react'
 import { Tool } from '@/lib/types'
-import defaultToolsData from '@/data/defaultTools.json'
+import defaultToolsData from '../../shared/default-tools.json'
 
 interface SystemDefaultToolsResult {
   tools: Tool[]

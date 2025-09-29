@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useLocalStorage } from './useLocalStorage'
 import { useCategories } from './useCategories'
 import { useSystemDefaultTools } from './useSystemDefaultTools'
-import defaultToolsData from '../data/defaultTools.json'
+import defaultToolsData from '../../shared/default-tools.json'
 
 export function useTools() {
   const { isAuthenticated, loadUserTools, saveUserTools, hasEncryptionCredentials } = useAuth()
