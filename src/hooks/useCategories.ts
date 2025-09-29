@@ -8,6 +8,11 @@ import {
 import { DEFAULT_CATEGORIES } from '@/lib/constants'
 import { getTokenFromStorage } from '@/lib/auth'
 
+// API基础路径 - 与认证模块保持一致
+const API_BASE = import.meta.env.DEV
+  ? 'http://localhost:3001'
+  : ''
+
 export function useCategories() {
   const { isAuthenticated } = useAuth()
 
@@ -28,7 +33,7 @@ export function useCategories() {
       headers
     }
 
-    const response = await fetch(`http://localhost:3001${url}`, fetchOptions)
+    const response = await fetch(`${API_BASE}${url}`, fetchOptions)
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`)
