@@ -6,18 +6,31 @@
 
 import { sha256 } from '@noble/hashes/sha256'
 import { pbkdf2 } from '@noble/hashes/pbkdf2'
-import { randomBytes } from '@noble/hashes/utils'
+import { randomBytes as nobleRandomBytes } from '@noble/hashes/utils'
 import { gcm } from '@noble/ciphers/aes'
-
-// 环境检测：检查crypto.subtle是否可用
-const hasSubtle = typeof crypto !== 'undefined' && crypto.subtle !== undefined
 
 // 调试配置：可通过环境变量强制使用noble fallback
 const forceNoble = import.meta.env.VITE_FORCE_NOBLE_FALLBACK === 'true'
 
-const useWebCrypto = hasSubtle && !forceNoble
+function getGlobalCrypto(): Crypto | undefined {
+  if (typeof globalThis === 'undefined') {
+    return undefined
+  }
+  return (globalThis as typeof globalThis & { crypto?: Crypto }).crypto
+}
+
+function hasSubtleCrypto(): boolean {
+  const cryptoInstance = getGlobalCrypto()
+  return !!cryptoInstance?.subtle && typeof cryptoInstance.subtle.digest === 'function'
+}
+
+function shouldUseWebCrypto(): boolean {
+  return !forceNoble && hasSubtleCrypto()
+}
 
 if (import.meta.env.DEV) {
+  const hasSubtle = hasSubtleCrypto()
+  const useWebCrypto = shouldUseWebCrypto()
   console.log('🔐 Crypto Environment:', {
     hasSubtle,
     forceNoble,
@@ -58,14 +71,15 @@ function concatBytes(...arrays: Uint8Array[]): Uint8Array {
 // =============================================================================
 
 function getRandomBytes(length: number): Uint8Array {
-  if (useWebCrypto && crypto.getRandomValues) {
+  const cryptoInstance = getGlobalCrypto()
+  if (cryptoInstance && typeof cryptoInstance.getRandomValues === 'function') {
     const array = new Uint8Array(length)
-    crypto.getRandomValues(array)
+    cryptoInstance.getRandomValues(array)
     return array
-  } else {
-    // fallback to @noble
-    return randomBytes(length)
   }
+
+  // fallback to @noble
+  return nobleRandomBytes(length)
 }
 
 // 生成随机salt（32字节 = 64字符hex）
@@ -80,23 +94,22 @@ export function generateSalt(): string {
 
 // 生成密码的hash用于服务器验证
 export async function hashPassword(password: string, salt: string): Promise<string> {
-  if (useWebCrypto) {
-    // Web Crypto API实现
-    // 确保与Node.js crypto.createHash('sha256').update(password + salt).digest('hex') 一致
-    const encoder = new TextEncoder()
-    const passwordBuffer = encoder.encode(password + salt)
+  const encoder = new TextEncoder()
+  const passwordBuffer = encoder.encode(password + salt)
 
-    const hashBuffer = await crypto.subtle.digest('SHA-256', passwordBuffer)
-    const hashArray = Array.from(new Uint8Array(hashBuffer))
+  if (shouldUseWebCrypto()) {
+    const cryptoInstance = getGlobalCrypto()
 
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
-  } else {
-    // @noble fallback实现
-    const encoder = new TextEncoder()
-    const passwordBuffer = encoder.encode(password + salt)
-    const hashBytes = sha256(passwordBuffer)
-    return bytesToHex(hashBytes)
+    if (cryptoInstance?.subtle) {
+      const hashBuffer = await cryptoInstance.subtle.digest('SHA-256', passwordBuffer)
+      const hashArray = Array.from(new Uint8Array(hashBuffer))
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+    }
   }
+
+  // @noble fallback实现
+  const hashBytes = sha256(passwordBuffer)
+  return bytesToHex(hashBytes)
 }
 
 // =============================================================================
@@ -109,38 +122,47 @@ export async function deriveKey(password: string, salt: string): Promise<CryptoK
   const passwordBuffer = encoder.encode(password)
   const saltBuffer = hexToBytes(salt)
 
-  if (useWebCrypto) {
-    // Web Crypto API实现
-    // 导入密码作为密钥材料
-    const keyMaterial = await crypto.subtle.importKey(
-      'raw',
-      passwordBuffer,
-      'PBKDF2',
-      false,
-      ['deriveKey']
-    )
+  if (shouldUseWebCrypto()) {
+    const cryptoInstance = getGlobalCrypto()
 
-    // 使用PBKDF2派生AES密钥
-    return await crypto.subtle.deriveKey(
-      {
-        name: 'PBKDF2',
-        salt: saltBuffer,
-        iterations: 100000, // 10万次迭代
-        hash: 'SHA-256'
-      },
-      keyMaterial,
-      {
-        name: 'AES-GCM',
-        length: 256
-      },
-      false,
-      ['encrypt', 'decrypt']
-    )
-  } else {
-    // @noble fallback实现
-    // 使用pbkdf2生成32字节密钥
-    return pbkdf2(sha256, passwordBuffer, saltBuffer, { c: 100000, dkLen: 32 })
+    if (cryptoInstance?.subtle) {
+      const keyMaterial = await cryptoInstance.subtle.importKey(
+        'raw',
+        passwordBuffer,
+        'PBKDF2',
+        false,
+        ['deriveKey']
+      )
+
+      return await cryptoInstance.subtle.deriveKey(
+        {
+          name: 'PBKDF2',
+          salt: saltBuffer,
+          iterations: 100000, // 10万次迭代
+          hash: 'SHA-256'
+        },
+        keyMaterial,
+        {
+          name: 'AES-GCM',
+          length: 256
+        },
+        false,
+        ['encrypt', 'decrypt']
+      )
+    }
   }
+
+  // @noble fallback实现
+  return pbkdf2(sha256, passwordBuffer, saltBuffer, { c: 100000, dkLen: 32 })
+}
+
+async function exportCryptoKey(key: CryptoKey): Promise<Uint8Array> {
+  const cryptoInstance = getGlobalCrypto()
+  if (!cryptoInstance?.subtle) {
+    throw new Error('Web Crypto API 不可用，无法导出密钥')
+  }
+  const raw = await cryptoInstance.subtle.exportKey('raw', key)
+  return new Uint8Array(raw)
 }
 
 // =============================================================================
@@ -150,7 +172,6 @@ export async function deriveKey(password: string, salt: string): Promise<CryptoK
 // AES-GCM加密
 export async function encryptData(data: any, password: string, salt: string): Promise<string> {
   try {
-    const key = await deriveKey(password, salt)
     const encoder = new TextEncoder()
     const dataString = JSON.stringify(data)
     const dataBuffer = encoder.encode(dataString)
@@ -158,10 +179,19 @@ export async function encryptData(data: any, password: string, salt: string): Pr
     // 生成随机IV（12字节）
     const iv = getRandomBytes(12)
 
-    if (useWebCrypto && key instanceof CryptoKey) {
+    const key = await deriveKey(password, salt)
+    const cryptoInstance = getGlobalCrypto()
+    const preferWebCrypto = shouldUseWebCrypto()
+
+    if (
+      preferWebCrypto &&
+      cryptoInstance?.subtle &&
+      typeof CryptoKey !== 'undefined' &&
+      key instanceof CryptoKey
+    ) {
       // Web Crypto API实现
       // 加密数据
-      const encryptedBuffer = await crypto.subtle.encrypt(
+      const encryptedBuffer = await cryptoInstance.subtle.encrypt(
         {
           name: 'AES-GCM',
           iv: iv
@@ -177,7 +207,7 @@ export async function encryptData(data: any, password: string, salt: string): Pr
       return btoa(String.fromCharCode(...combined))
     } else {
       // @noble fallback实现
-      const keyBytes = key as Uint8Array
+      const keyBytes = key instanceof Uint8Array ? key : await exportCryptoKey(key)
       const cipher = gcm(keyBytes, iv)
       const encryptedBytes = cipher.encrypt(dataBuffer)
 
@@ -198,6 +228,8 @@ export async function encryptData(data: any, password: string, salt: string): Pr
 export async function decryptData(encryptedData: string, password: string, salt: string): Promise<any> {
   try {
     const key = await deriveKey(password, salt)
+    const cryptoInstance = getGlobalCrypto()
+    const preferWebCrypto = shouldUseWebCrypto()
 
     // 从base64解码
     const combined = new Uint8Array(
@@ -208,10 +240,15 @@ export async function decryptData(encryptedData: string, password: string, salt:
     const iv = combined.slice(0, 12)
     const encryptedBuffer = combined.slice(12)
 
-    if (useWebCrypto && key instanceof CryptoKey) {
+    if (
+      preferWebCrypto &&
+      cryptoInstance?.subtle &&
+      typeof CryptoKey !== 'undefined' &&
+      key instanceof CryptoKey
+    ) {
       // Web Crypto API实现
       // 解密数据
-      const decryptedBuffer = await crypto.subtle.decrypt(
+      const decryptedBuffer = await cryptoInstance.subtle.decrypt(
         {
           name: 'AES-GCM',
           iv: iv
@@ -227,7 +264,7 @@ export async function decryptData(encryptedData: string, password: string, salt:
       return JSON.parse(dataString)
     } else {
       // @noble fallback实现
-      const keyBytes = key as Uint8Array
+      const keyBytes = key instanceof Uint8Array ? key : await exportCryptoKey(key)
       const cipher = gcm(keyBytes, iv)
       const decryptedBytes = cipher.decrypt(encryptedBuffer)
 
