@@ -4,6 +4,7 @@
  */
 
 import { hashPassword, encryptData, decryptData } from './crypto'
+import { fetchWithRetry, fetchJsonWithRetry, retryPresets } from './api-retry'
 import defaultToolsData from '../../shared/default-tools.json'
 
 const API_BASE = import.meta.env.DEV
@@ -37,7 +38,7 @@ export interface RegisterResult {
   error?: string
 }
 
-// API请求辅助函数
+// API请求辅助函数 - 带重试机制
 async function apiRequest(url: string, options: RequestInit = {}): Promise<Response> {
   const fullUrl = `${API_BASE}${url}`;
 
@@ -80,7 +81,13 @@ async function apiRequest(url: string, options: RequestInit = {}): Promise<Respo
     });
   }
 
-  const response = await fetch(fullUrl, fetchOptions)
+  // 使用重试机制进行请求
+  const response = await fetchWithRetry(fullUrl, fetchOptions, {
+    ...retryPresets.standard,
+    onRetry: (attempt, error) => {
+      console.warn(`认证API重试中 (${attempt}/${retryPresets.standard.maxRetries}):`, error?.message)
+    }
+  })
 
   console.log('📡 API Response:', {
     status: response.status,
@@ -91,13 +98,26 @@ async function apiRequest(url: string, options: RequestInit = {}): Promise<Respo
   return response
 }
 
-// 带token的API请求
+// 带token的API请求 - 使用关键操作重试配置
 async function authenticatedRequest(url: string, token: string, options: RequestInit = {}): Promise<Response> {
-  return apiRequest(url, {
+  const fullUrl = `${API_BASE}${url}`;
+
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+    ...options.headers
+  };
+
+  const fetchOptions: RequestInit = {
     ...options,
-    headers: {
-      ...options.headers,
-      'Authorization': `Bearer ${token}`
+    headers
+  };
+
+  // 对于认证请求使用关键操作重试配置
+  return fetchWithRetry(fullUrl, fetchOptions, {
+    ...retryPresets.critical,
+    onRetry: (attempt, error) => {
+      console.warn(`认证请求重试中 (${attempt}/${retryPresets.critical.maxRetries}):`, error?.message)
     }
   })
 }
@@ -140,8 +160,8 @@ export async function registerUser(
     let initialToolsData = []
 
     try {
-      // 尝试获取管理员配置的系统默认工具
-      const systemResponse = await fetch(`${API_BASE}/default-tools`)
+      // 尝试获取管理员配置的系统默认工具 - 使用重试机制
+      const systemResponse = await fetchWithRetry(`${API_BASE}/default-tools`, {}, retryPresets.fast)
       if (systemResponse.ok) {
         const systemData = await systemResponse.json()
         if (systemData.success && systemData.tools && systemData.tools.length > 0) {
@@ -494,10 +514,10 @@ export function clearTokenFromStorage() {
   }
 }
 
-// 健康检查
+// 健康检查 - 使用快速重试
 export async function healthCheck(): Promise<boolean> {
   try {
-    const response = await apiRequest('/health')
+    const response = await fetchWithRetry(`${API_BASE}/health`, {}, retryPresets.fast)
     return response.ok
   } catch (error) {
     console.error('Health check error:', error)

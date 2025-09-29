@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Users, UserCheck, UserX, HardDrive } from 'lucide-react'
+import { fetchJsonWithRetry, retryPresets } from '@/lib/api-retry'
 
 const API_BASE = import.meta.env.DEV
   ? 'http://localhost:3001/api'
@@ -32,21 +33,30 @@ export function AdminDashboard() {
       setLoading(true)
       setError(null)
 
-      const response = await fetch(`${API_BASE}/admin/stats`, {
-        headers: {
-          'Authorization': `Bearer ${user?.token}`,
-          'Content-Type': 'application/json'
+      const data = await fetchJsonWithRetry<SystemStats>(
+        `${API_BASE}/admin/stats`,
+        {
+          headers: {
+            'Authorization': `Bearer ${user?.token}`,
+            'Content-Type': 'application/json'
+          }
+        },
+        {
+          ...retryPresets.critical,
+          onRetry: (attempt, error) => {
+            console.warn(`统计数据API重试中 (${attempt}/${retryPresets.critical.maxRetries}):`, error?.message)
+          }
         }
-      })
+      )
 
-      if (!response.ok) {
-        throw new Error('获取统计数据失败')
-      }
-
-      const data = await response.json()
       setStats(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '获取数据失败')
+      console.error('获取统计数据失败:', err)
+      setError(
+        err instanceof Error && err.message.includes('HTTP 502')
+          ? '服务暂时不可用，请稍后重试'
+          : err instanceof Error ? err.message : '获取数据失败'
+      )
     } finally {
       setLoading(false)
     }

@@ -7,6 +7,7 @@ import {
 } from '@/lib/types'
 import { DEFAULT_CATEGORIES } from '@/lib/constants'
 import { getTokenFromStorage } from '@/lib/auth'
+import { fetchWithRetry, retryPresets } from '@/lib/api-retry'
 
 // API基础路径 - 与认证模块保持一致
 const API_BASE = import.meta.env.DEV
@@ -16,7 +17,7 @@ const API_BASE = import.meta.env.DEV
 export function useCategories() {
   const { isAuthenticated } = useAuth()
 
-  // 内部API请求函数
+  // 内部API请求函数 - 带重试机制
   const apiRequest = useCallback(async (url: string, options: RequestInit = {}) => {
     const tokenData = getTokenFromStorage()
     const token = tokenData?.token
@@ -33,10 +34,19 @@ export function useCategories() {
       headers
     }
 
-    const response = await fetch(`${API_BASE}${url}`, fetchOptions)
+    // 使用重试机制进行请求
+    const response = await fetchWithRetry(`${API_BASE}${url}`, fetchOptions, {
+      ...retryPresets.standard,
+      onRetry: (attempt, error) => {
+        console.warn(`分类API重试中 (${attempt}/${retryPresets.standard.maxRetries}):`, error?.message)
+      }
+    })
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
+      const errorText = response.status === 502
+        ? '服务暂时不可用，请稍后重试'
+        : `HTTP error! status: ${response.status}`
+      throw new Error(errorText)
     }
 
     return response.json()
@@ -84,7 +94,10 @@ export function useCategories() {
       }
     } catch (error) {
       console.error('Fetch categories error:', error)
-      setError('网络错误，请重试')
+      const errorMsg = error instanceof Error && error.message.includes('502')
+        ? '服务暂时不可用，请稍后重试'
+        : error instanceof Error ? error.message : '网络错误，请重试'
+      setError(errorMsg)
       // 错误时使用默认分类
       setCategories(DEFAULT_CATEGORIES)
       setIsDataLoaded(true)
@@ -125,7 +138,9 @@ export function useCategories() {
       }
     } catch (error) {
       console.error('Create category error:', error)
-      const errorMsg = '网络错误，请重试'
+      const errorMsg = error instanceof Error && error.message.includes('502')
+        ? '服务暂时不可用，请稍后重试'
+        : error instanceof Error ? error.message : '网络错误，请重试'
       setError(errorMsg)
       return { success: false, error: errorMsg }
     }
@@ -165,7 +180,9 @@ export function useCategories() {
       }
     } catch (error) {
       console.error('Update category error:', error)
-      const errorMsg = '网络错误，请重试'
+      const errorMsg = error instanceof Error && error.message.includes('502')
+        ? '服务暂时不可用，请稍后重试'
+        : error instanceof Error ? error.message : '网络错误，请重试'
       setError(errorMsg)
       return { success: false, error: errorMsg }
     }
@@ -205,7 +222,9 @@ export function useCategories() {
       }
     } catch (error) {
       console.error('❌ Delete category error:', error)
-      const errorMsg = '网络错误，请重试'
+      const errorMsg = error instanceof Error && error.message.includes('502')
+        ? '服务暂时不可用，请稍后重试'
+        : error instanceof Error ? error.message : '网络错误，请重试'
       setError(errorMsg)
       return { success: false, error: errorMsg }
     }

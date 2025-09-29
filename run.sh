@@ -174,7 +174,20 @@ start_backend() {
     # Set JWT_SECRET for security (required after security fix)
     # WARNING: This is a default development key. Change for production!
     export JWT_SECRET="${JWT_SECRET:-linkhub-development-jwt-secret-key-change-in-production-2024}"
-    nohup npm run dev > "$LOG_DIR/backend.log" 2>&1 &
+
+    # Environment detection for startup mode
+    local backend_cmd
+    if [[ "${NODE_ENV:-development}" == "production" ]]; then
+        log_info "Starting backend in production mode (node)"
+        backend_cmd="npm start"
+        export NODE_ENV=production
+    else
+        log_info "Starting backend in development mode (nodemon)"
+        backend_cmd="npm run dev"
+        export NODE_ENV=development
+    fi
+
+    nohup $backend_cmd > "$LOG_DIR/backend.log" 2>&1 &
     local pid=$!
     echo $pid > "$BACKEND_PID"
 
