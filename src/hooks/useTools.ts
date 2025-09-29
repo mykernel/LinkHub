@@ -7,7 +7,7 @@ import { useSystemDefaultTools } from './useSystemDefaultTools'
 import defaultToolsData from '../data/defaultTools.json'
 
 export function useTools() {
-  const { isAuthenticated, loadUserTools, saveUserTools } = useAuth()
+  const { isAuthenticated, loadUserTools, saveUserTools, hasEncryptionCredentials } = useAuth()
 
   // 系统默认工具加载
   const {
@@ -51,14 +51,23 @@ export function useTools() {
 
   // 加载用户数据（仅当登录时）
   useEffect(() => {
-    if (isAuthenticated && !isUserDataLoaded && !isLoadingUserData) {
+    if (isAuthenticated && hasEncryptionCredentials && !isUserDataLoaded && !isLoadingUserData) {
+      // 完整认证凭据下的首次加载
       loadUserData()
+    } else if (isAuthenticated && hasEncryptionCredentials && isUserDataLoaded && !isLoadingUserData) {
+      // 重试逻辑：当认证凭据变为完整时，检查是否需要重新加载
+      // 如果当前用户工具为空或仅包含默认数据，则重新尝试加载
+      if (userTools.length === 0 || userTools.every(tool => tool.id.includes('user_copy_') || tool.id.includes('user_error_'))) {
+        console.log('[useTools] 检测到默认数据，认证凭据完整后重新尝试加载用户数据')
+        setIsUserDataLoaded(false) // 重置标志以允许重新加载
+        loadUserData()
+      }
     } else if (!isAuthenticated) {
       // 未登录时重置用户数据状态
       setUserTools([])
       setIsUserDataLoaded(false)
     }
-  }, [isAuthenticated, isUserDataLoaded, isLoadingUserData])
+  }, [isAuthenticated, hasEncryptionCredentials, isUserDataLoaded, isLoadingUserData, userTools])
 
   const loadUserData = async () => {
     setIsLoadingUserData(true)
@@ -74,12 +83,59 @@ export function useTools() {
         setIsUserDataLoaded(true)
       } else {
         console.error('Failed to load user tools:', result.error)
-        // 加载失败时优先使用系统配置的默认数据，降级到静态默认数据
+
+        // 检查是否是认证凭据不完整导致的失败
+        if (result.error === '用户未登录') {
+          console.log('[useTools] 认证凭据不完整，等待凭据准备就绪后重试')
+          // 不设置isUserDataLoaded=true，让重试机制有机会工作
+          setIsUserDataLoaded(false)
+        } else {
+          // 真正的加载失败，使用默认数据作为降级
+          if (systemDefaultTools.length > 0) {
+            // 使用系统配置的默认工具，为用户创建个人副本
+            const userCopyTools = systemDefaultTools.map(tool => ({
+              ...tool,
+              id: `user_copy_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${tool.id}`,
+              lastAccessed: new Date(),
+              createdAt: new Date(),
+              clickCount: 0,
+              isPinned: false,
+              pinnedPosition: undefined
+            }))
+            setUserTools(userCopyTools)
+
+            if (import.meta.env.DEV) {
+              console.log('✅ 用户数据加载失败，使用系统配置默认工具', { count: userCopyTools.length })
+            }
+          } else {
+            // 系统配置为空时，使用静态默认数据
+            setUserTools(defaultToolsData.map(tool => ({
+              ...tool,
+              lastAccessed: new Date(tool.lastAccessed),
+              createdAt: new Date(tool.createdAt)
+            })))
+
+            if (import.meta.env.DEV) {
+              console.log('📁 用户数据加载失败，使用静态默认数据', { count: defaultToolsData.length })
+            }
+          }
+          setIsUserDataLoaded(true)
+        }
+      }
+    } catch (error) {
+      console.error('Load user data error:', error)
+
+      // 检查是否是认证相关的异常
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      if (errorMessage.includes('未登录') || errorMessage.includes('认证') || errorMessage.includes('credential')) {
+        console.log('[useTools] 认证异常，等待凭据准备就绪后重试')
+        setIsUserDataLoaded(false)
+      } else {
+        // 其他异常，使用默认工具作为降级
         if (systemDefaultTools.length > 0) {
-          // 使用系统配置的默认工具，为用户创建个人副本
           const userCopyTools = systemDefaultTools.map(tool => ({
             ...tool,
-            id: `user_copy_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${tool.id}`,
+            id: `user_error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${tool.id}`,
             lastAccessed: new Date(),
             createdAt: new Date(),
             clickCount: 0,
@@ -89,44 +145,13 @@ export function useTools() {
           setUserTools(userCopyTools)
 
           if (import.meta.env.DEV) {
-            console.log('✅ 用户数据加载失败，使用系统配置默认工具', { count: userCopyTools.length })
+            console.log('✅ 用户数据加载异常，使用系统配置默认工具', { count: userCopyTools.length })
           }
         } else {
-          // 系统配置为空时，使用静态默认数据
-          setUserTools(defaultToolsData.map(tool => ({
-            ...tool,
-            lastAccessed: new Date(tool.lastAccessed),
-            createdAt: new Date(tool.createdAt)
-          })))
-
-          if (import.meta.env.DEV) {
-            console.log('📁 用户数据加载失败，使用静态默认数据', { count: defaultToolsData.length })
-          }
+          setUserTools([])
         }
         setIsUserDataLoaded(true)
       }
-    } catch (error) {
-      console.error('Load user data error:', error)
-      // 异常情况下也优先使用系统配置的默认工具
-      if (systemDefaultTools.length > 0) {
-        const userCopyTools = systemDefaultTools.map(tool => ({
-          ...tool,
-          id: `user_error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${tool.id}`,
-          lastAccessed: new Date(),
-          createdAt: new Date(),
-          clickCount: 0,
-          isPinned: false,
-          pinnedPosition: undefined
-        }))
-        setUserTools(userCopyTools)
-
-        if (import.meta.env.DEV) {
-          console.log('✅ 用户数据加载异常，使用系统配置默认工具', { count: userCopyTools.length })
-        }
-      } else {
-        setUserTools([])
-      }
-      setIsUserDataLoaded(true)
     } finally {
       setIsLoadingUserData(false)
     }

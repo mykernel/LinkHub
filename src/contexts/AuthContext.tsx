@@ -46,6 +46,7 @@ interface AuthContextType extends AuthState {
   // 增强的状态信息
   hasValidSession: boolean      // 有有效token
   needsPassword: boolean        // 需要重新输入密码解锁数据
+  hasEncryptionCredentials: boolean  // 有完整的加密凭据
 
   // 认证操作
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>
@@ -416,6 +417,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // 新增状态字段
     hasValidSession,
     needsPassword: hasValidSession && !hasEncryptionContext,
+    hasEncryptionCredentials: hasEncryptionContext,
     // 方法
     login,
     register,
