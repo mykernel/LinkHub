@@ -8,9 +8,9 @@ import rateLimit from 'express-rate-limit';
 import lockfile from 'proper-lockfile';
 
 // 导入统一的分类定义
-import defaultCategoriesData from '../../shared/default-categories.json' assert { type: 'json' };
+const defaultCategoriesData = JSON.parse(fs.readFileSync(path.join(process.cwd(), '../shared/default-categories.json'), 'utf8'));
 // 导入统一的默认工具定义
-import defaultToolsData from '../../shared/default-tools.json' assert { type: 'json' };
+const defaultToolsData = JSON.parse(fs.readFileSync(path.join(process.cwd(), '../shared/default-tools.json'), 'utf8'));
 
 const app = express();
 const PORT = process.env.PORT || 3001;
