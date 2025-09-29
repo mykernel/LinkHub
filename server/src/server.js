@@ -12,6 +12,17 @@ const defaultCategoriesData = JSON.parse(fs.readFileSync(path.join(process.cwd()
 // 导入统一的默认工具定义
 const defaultToolsData = JSON.parse(fs.readFileSync(path.join(process.cwd(), '../shared/default-tools.json'), 'utf8'));
 
+// 动态生成系统分类ID列表 - 从共享配置读取
+const getSystemCategoryIds = () => {
+  return defaultCategoriesData
+    .filter(category => category.is_system)
+    .map(category => category.id);
+};
+
+// 缓存系统分类ID列表
+const SYSTEM_CATEGORY_IDS = getSystemCategoryIds();
+console.log('📂 系统分类ID列表:', SYSTEM_CATEGORY_IDS);
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 // 强制要求JWT_SECRET环境变量，不允许使用不安全的默认值
@@ -1060,6 +1071,16 @@ app.delete('/api/categories/:id', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: '该分类不能被删除' });
     }
 
+    // 参数校验：如果提供了target_category_id，确保它不是待删除的分类
+    if (target_category_id && target_category_id === id) {
+      return res.status(400).json({ error: '目标分类不能是待删除的分类' });
+    }
+
+    // 参数校验：如果提供了target_category_id，确保它是有效的分类
+    if (target_category_id && !SYSTEM_CATEGORY_IDS.includes(target_category_id)) {
+      // 对于自定义分类，需要验证是否存在（稍后在用户数据加载后进行）
+    }
+
     const userFile = getUserFilePath(username);
     const lockOptions = { retries: 3, minTimeout: 100, maxTimeout: 1000 };
 
@@ -1087,17 +1108,25 @@ app.delete('/api/categories/:id', authenticateToken, async (req, res) => {
       // 查找要删除的分类（用户自定义分类）
       const categoryIndex = userData.categories.findIndex(cat => cat.id === id);
 
-      // 检查是否为系统分类
-      const systemCategoryIds = ['monitoring', 'logging', 'deployment', 'database', 'documentation', 'network', 'security'];
-      const isSystemCategory = systemCategoryIds.includes(id);
+      // 检查是否为系统分类 - 使用动态生成的系统分类ID列表
+      const isSystemCategory = SYSTEM_CATEGORY_IDS.includes(id);
 
       if (categoryIndex === -1 && !isSystemCategory) {
         return res.status(404).json({ error: '分类不存在' });
       }
 
+      // 完善target_category_id验证：确保目标分类存在
+      if (target_category_id && !SYSTEM_CATEGORY_IDS.includes(target_category_id)) {
+        const targetCategoryExists = userData.categories.some(cat => cat.id === target_category_id);
+        if (!targetCategoryExists) {
+          return res.status(400).json({ error: '目标分类不存在' });
+        }
+      }
+
       // 注意：工具移动现在由前端处理，后端只负责删除分类
 
       // 删除分类
+      let deleteMessage = '';
       if (isSystemCategory) {
         // 对于系统分类，添加到禁用列表中
         if (!userData.disabledSystemCategories) {
@@ -1105,17 +1134,27 @@ app.delete('/api/categories/:id', authenticateToken, async (req, res) => {
         }
         if (!userData.disabledSystemCategories.includes(id)) {
           userData.disabledSystemCategories.push(id);
+          deleteMessage = `系统分类"${id}"已隐藏`;
+        } else {
+          deleteMessage = `系统分类"${id}"已经被隐藏`;
         }
       } else {
         // 对于用户自定义分类，直接删除
+        const deletedCategory = userData.categories[categoryIndex];
         userData.categories.splice(categoryIndex, 1);
+        deleteMessage = `自定义分类"${deletedCategory.name}"已删除`;
       }
+
+      // 保存用户数据
       await fs.writeJSON(userFile, userData);
 
+      // 统一的成功响应格式
       res.json({
         success: true,
-        message: '分类删除成功',
-        moved_tools: 0  // 前端现在处理工具移动
+        message: deleteMessage,
+        moved_tools: 0,  // 前端现在处理工具移动，后端返回固定值
+        category_type: isSystemCategory ? 'system' : 'custom',
+        target_category_provided: !!target_category_id
       });
 
     } finally {
