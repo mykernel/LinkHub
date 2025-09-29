@@ -318,6 +318,61 @@ restart() {
     start
 }
 
+# Deploy to nginx
+deploy() {
+    log_info "Deploying LinkHub to nginx..."
+    echo
+
+    # Check if we're running as root
+    if [ "$EUID" -ne 0 ]; then
+        log_error "Deploy command requires root privileges. Run with sudo."
+        return 1
+    fi
+
+    # Build frontend
+    log_info "Building frontend..."
+    if npm run build; then
+        log_success "Frontend build completed"
+    else
+        log_error "Frontend build failed"
+        return 1
+    fi
+
+    # Check if dist directory exists
+    if [ ! -d "dist" ]; then
+        log_error "dist directory not found. Build may have failed."
+        return 1
+    fi
+
+    # Create target directory
+    log_info "Creating nginx web directory..."
+    mkdir -p /var/www/linkhub
+
+    # Copy dist files to nginx directory
+    log_info "Copying files to /var/www/linkhub..."
+    if cp -r dist/* /var/www/linkhub/; then
+        log_success "Files copied successfully"
+    else
+        log_error "Failed to copy files"
+        return 1
+    fi
+
+    # Set proper ownership and permissions
+    log_info "Setting permissions..."
+    if chown -R www-data:www-data /var/www/linkhub && chmod -R 755 /var/www/linkhub; then
+        log_success "Permissions set successfully"
+    else
+        log_error "Failed to set permissions"
+        return 1
+    fi
+
+    echo
+    log_success "Deployment completed successfully!"
+    log_info "Files deployed to: /var/www/linkhub"
+    log_info "Don't forget to reload nginx: sudo systemctl reload nginx"
+    echo
+}
+
 # View logs
 logs() {
     local service=$1
@@ -359,7 +414,7 @@ logs() {
 help() {
     echo "LinkHub Management Script"
     echo
-    echo "Usage: $0 {start|stop|restart|status|logs}"
+    echo "Usage: $0 {start|stop|restart|status|logs|deploy}"
     echo
     echo "Commands:"
     echo "  start           Start frontend and backend services"
@@ -367,12 +422,14 @@ help() {
     echo "  restart         Restart frontend and backend services"
     echo "  status          Check service status"
     echo "  logs [service]  View logs (frontend/backend/all)"
+    echo "  deploy          Build and deploy to nginx (requires root)"
     echo "  help            Show this help message"
     echo
     echo "Examples:"
     echo "  $0 start        # Start all services"
     echo "  $0 logs         # View all logs"
     echo "  $0 logs backend # View backend logs"
+    echo "  sudo $0 deploy  # Build and deploy to nginx"
 }
 
 # Main logic
@@ -391,6 +448,9 @@ case "$1" in
         ;;
     logs)
         logs "$2"
+        ;;
+    deploy)
+        deploy
         ;;
     help|--help|-h)
         help

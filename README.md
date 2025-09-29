@@ -335,9 +335,14 @@ EXPOSE 3001 5173
 CMD ["npm", "start"]
 ```
 
-### 反向代理配置
+### Nginx 反向代理配置
 
-Nginx配置示例：
+先构建前端静态文件：
+```bash
+npm run build
+```
+
+Nginx 配置：
 
 ```nginx
 server {
@@ -346,9 +351,8 @@ server {
 
     # 前端静态文件
     location / {
-        proxy_pass http://localhost:5173;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
+        root /path/to/LinkHub/dist;
+        try_files $uri $uri/ /index.html;
     }
 
     # 后端API
@@ -356,10 +360,13 @@ server {
         proxy_pass http://localhost:3001;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
+```
+
+保存配置并重启nginx：
+```bash
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
 ## 👨‍💻 开发指南
