@@ -56,6 +56,7 @@ class Bookmark(Base):
     last_visit_at = Column(TIMESTAMP, nullable=True)
     is_favorite = Column(Boolean, default=False, index=True)
     pinned_position = Column(Integer, nullable=True, index=True)
+    display_order = Column(Integer, default=0, index=True)
     created_at = Column(TIMESTAMP, default=datetime.utcnow, index=True)
     updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
 

@@ -48,6 +48,8 @@ CREATE TABLE IF NOT EXISTS bookmarks (
     visit_count INT DEFAULT 0,
     last_visit_at TIMESTAMP NULL,
     is_favorite BOOLEAN DEFAULT FALSE,
+    pinned_position INT DEFAULT NULL,
+    display_order INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -56,7 +58,9 @@ CREATE TABLE IF NOT EXISTS bookmarks (
     INDEX idx_category_id (category_id),
     INDEX idx_created_at (created_at),
     INDEX idx_visit_count (visit_count),
-    INDEX idx_is_favorite (is_favorite)
+    INDEX idx_is_favorite (is_favorite),
+    INDEX idx_pinned_position (pinned_position),
+    INDEX idx_display_order (display_order)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='书签表';
 
 -- 插入测试用户（密码：password123）
@@ -76,6 +80,6 @@ INSERT INTO categories (user_id, name, icon, color, is_system, display_order) VA
 (1, '购物商城', '🛒', '#ec4899', FALSE, 8);
 
 -- 插入示例书签（中文）
-INSERT INTO bookmarks (user_id, category_id, title, url, description, icon) VALUES
-(1, 3, '微博', 'https://weibo.com', '中国最大的社交媒体平台', '📱'),
-(1, 3, '知乎', 'https://zhihu.com', '中文问答社区', '💬');
+INSERT INTO bookmarks (user_id, category_id, title, url, description, icon, display_order) VALUES
+(1, 3, '微博', 'https://weibo.com', '中国最大的社交媒体平台', '📱', 1),
+(1, 3, '知乎', 'https://zhihu.com', '中文问答社区', '💬', 2);

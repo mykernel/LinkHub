@@ -12,9 +12,10 @@ from security import encryption
 # API 排序字段与数据库列的映射
 BOOKMARK_SORT_FIELD_MAP = {
     "created_at": Bookmark.created_at,
-    "last_accessed": Bookmark.last_visit_at,
-    "click_count": Bookmark.visit_count,
-    "name": Bookmark.title,
+    "last_visit_at": Bookmark.last_visit_at,
+    "visit_count": Bookmark.visit_count,
+    "title": Bookmark.title,
+    "display_order": Bookmark.display_order,
 }
 
 
@@ -262,15 +263,60 @@ def reorder_categories(db: Session, user_id: int, category_ids: list[int]) -> bo
     return updated
 
 
+def reorder_bookmarks(db: Session, user_id: int, bookmark_ids: list[int]) -> bool:
+    """更新书签的显示顺序"""
+    if not bookmark_ids:
+        return False
+
+    seen: set[int] = set()
+    unique_ids: list[int] = []
+    for bookmark_id in bookmark_ids:
+        if bookmark_id not in seen:
+            seen.add(bookmark_id)
+            unique_ids.append(bookmark_id)
+
+    bookmarks = db.query(Bookmark).filter(
+        Bookmark.user_id == user_id,
+        Bookmark.id.in_(unique_ids)
+    ).all()
+
+    bookmark_map = {bookmark.id: bookmark for bookmark in bookmarks}
+
+    orders = [bookmark.display_order or 0 for bookmark in bookmarks]
+    base_order = min(orders) if orders else 1
+    if base_order < 1:
+        base_order = 1
+
+    updated = False
+    for index, bookmark_id in enumerate(unique_ids):
+        bookmark = bookmark_map.get(bookmark_id)
+        if not bookmark:
+            continue
+        target_order = base_order + index
+        if bookmark.display_order != target_order:
+            bookmark.display_order = target_order
+            updated = True
+
+    if updated:
+        db.commit()
+
+    return updated
+
+
 def create_bookmark(db: Session, user_id: int, bookmark: BookmarkCreate) -> Bookmark:
     """创建书签"""
+    max_order = db.query(func.max(Bookmark.display_order)).filter(
+        Bookmark.user_id == user_id
+    ).scalar() or 0
+
     db_bookmark = Bookmark(
         user_id=user_id,
         title=bookmark.title,
         url=bookmark.url,
         description=bookmark.description,
         icon=bookmark.icon,
-        category_id=bookmark.category_id
+        category_id=bookmark.category_id,
+        display_order=max_order + 1
     )
     db.add(db_bookmark)
     db.commit()

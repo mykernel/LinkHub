@@ -12,7 +12,7 @@ from models import User, Category, Bookmark
 from schemas import (
     UserCreate, UserLogin, UserResponse, Token,
     CategoryCreate, CategoryUpdate, CategoryResponse, CategoryReorder,
-    BookmarkCreate, BookmarkUpdate, BookmarkResponse, BookmarkListParams, BookmarkListResponse
+    BookmarkCreate, BookmarkUpdate, BookmarkResponse, BookmarkListParams, BookmarkListResponse, BookmarkReorder
 )
 from auth import get_current_user, get_current_user_optional, verify_password, create_access_token
 import crud
@@ -32,6 +32,7 @@ def serialize_bookmark(bookmark: Bookmark) -> BookmarkResponse:
         is_favorite=bookmark.is_favorite,
         visit_count=bookmark.visit_count,
         last_visit_at=bookmark.last_visit_at,
+        display_order=bookmark.display_order or 0,
         created_at=bookmark.created_at,
         updated_at=bookmark.updated_at
     )
@@ -361,6 +362,23 @@ def toggle_pin_bookmark(
         )
 
     return serialize_bookmark(db_bookmark)
+
+
+@app.post("/api/bookmarks/reorder", tags=["书签"])
+def reorder_bookmarks_endpoint(
+    payload: BookmarkReorder,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    success = crud.reorder_bookmarks(db, current_user.id, payload.bookmark_ids)
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="书签排序失败"
+        )
+
+    return {"message": "书签顺序已更新"}
 
 
 # ===== 静态文件服务 =====

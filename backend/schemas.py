@@ -104,6 +104,7 @@ class BookmarkResponse(BookmarkBase):
     is_favorite: bool
     visit_count: int
     last_visit_at: Optional[datetime] = None
+    display_order: int
     created_at: datetime
     updated_at: datetime
 
@@ -114,7 +115,7 @@ class BookmarkResponse(BookmarkBase):
 class BookmarkListParams(BaseModel):
     category_id: Optional[int] = None
     search: Optional[str] = None
-    sort_by: str = Field(default="created_at", pattern="^(created_at|last_visit_at|visit_count|title)$")
+    sort_by: str = Field(default="created_at", pattern="^(created_at|last_visit_at|visit_count|title|display_order)$")
     order: str = Field(default="desc", pattern="^(asc|desc)$")
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=12, ge=1, le=100)
@@ -126,3 +127,7 @@ class BookmarkListResponse(BaseModel):
     page: int
     page_size: int
     total_pages: int
+
+
+class BookmarkReorder(BaseModel):
+    bookmark_ids: list[int]

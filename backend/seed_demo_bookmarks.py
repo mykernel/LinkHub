@@ -225,7 +225,7 @@ def seed_bookmarks():
         db.commit()
 
         print("写入 20 条示例书签...")
-        for data in BOOKMARKS:
+        for position, data in enumerate(BOOKMARKS, start=1):
             category_id = category_map.get(data["category_name"])
             if not category_id:
                 print(f"⚠️ 分类 {data['category_name']} 不存在，跳过 {data['title']}")
@@ -240,7 +240,8 @@ def seed_bookmarks():
                 icon=data.get("icon"),
                 tags=data.get("tags"),
                 visit_count=data.get("visit_count", 0),
-                is_favorite=data.get("is_favorite", False)
+                is_favorite=data.get("is_favorite", False),
+                display_order=position
             )
             db.add(bookmark)
 

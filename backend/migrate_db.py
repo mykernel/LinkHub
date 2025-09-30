@@ -67,6 +67,20 @@ def migrate():
                 else:
                     raise
 
+            # 添加 display_order 字段
+            try:
+                cursor.execute("""
+                    ALTER TABLE bookmarks
+                    ADD COLUMN display_order INT DEFAULT 0 AFTER pinned_position,
+                    ADD INDEX idx_display_order (display_order)
+                """)
+                print("✅ 添加 bookmarks.display_order 字段及索引")
+            except pymysql.err.OperationalError as e:
+                if "Duplicate column name" in str(e):
+                    print("⚠️  bookmarks.display_order 字段已存在")
+                else:
+                    raise
+
             # 提交更改
             connection.commit()
             print("\n✅ 数据库迁移完成！")

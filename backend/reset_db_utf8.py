@@ -82,6 +82,8 @@ def reset_database():
             visit_count INT DEFAULT 0,
             last_visit_at TIMESTAMP NULL,
             is_favorite BOOLEAN DEFAULT FALSE,
+            pinned_position INT DEFAULT NULL,
+            display_order INT DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -90,7 +92,9 @@ def reset_database():
             INDEX idx_category_id (category_id),
             INDEX idx_created_at (created_at),
             INDEX idx_visit_count (visit_count),
-            INDEX idx_is_favorite (is_favorite)
+            INDEX idx_is_favorite (is_favorite),
+            INDEX idx_pinned_position (pinned_position),
+            INDEX idx_display_order (display_order)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """)
 
@@ -130,16 +134,16 @@ def reset_database():
         social_category_id = cursor.fetchone()[0]
 
         bookmarks = [
-            ("微博", "https://weibo.com", "中国最大的社交媒体平台", "📱", social_category_id),
-            ("知乎", "https://zhihu.com", "中文问答社区", "💬", social_category_id),
+            ("微博", "https://weibo.com", "中国最大的社交媒体平台", "📱", social_category_id, 1),
+            ("知乎", "https://zhihu.com", "中文问答社区", "💬", social_category_id, 2),
         ]
 
-        for title, url, desc, icon, cat_id in bookmarks:
+        for title, url, desc, icon, cat_id, order in bookmarks:
             cursor.execute(
                 """INSERT INTO bookmarks
-                (user_id, category_id, title, url, description, icon)
-                VALUES (%s, %s, %s, %s, %s, %s)""",
-                (user_id, cat_id, title, url, desc, icon)
+                (user_id, category_id, title, url, description, icon, display_order)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                (user_id, cat_id, title, url, desc, icon, order)
             )
 
         conn.commit()

@@ -13,11 +13,15 @@ let state = {
     isGuest: true,
     isLoading: false,
     hasLoaded: false,
-    isSwitching: false
+    isSwitching: false,
+    manualTipShown: false
 };
 
 let refs = {};
 let searchTimeout;
+let draggedBookmarkCard = null;
+let dragStartBookmarkOrder = [];
+let bookmarkDragJustFinished = false;
 
 function cacheElements() {
     refs = {
@@ -56,6 +60,19 @@ function toggleAuthUI() {
             if (refs.avatar) refs.avatar.textContent = user.username.charAt(0).toUpperCase();
         }
     }
+
+    const manualOption = refs.sortSelect?.querySelector('option[value="display_order"]');
+    if (manualOption) {
+        manualOption.disabled = state.isGuest;
+        if (state.isGuest && refs.sortSelect.value === 'display_order') {
+            refs.sortSelect.value = 'created_at';
+            state.sortBy = 'created_at';
+        }
+    }
+}
+
+function isManualSortEnabled() {
+    return !state.isGuest && state.viewMode === 'grid' && state.sortBy === 'display_order';
 }
 
 function renderLoading() {
@@ -89,11 +106,14 @@ function createBookmarkCard(bookmark) {
     const description = escapeHtml(bookmark.description || '暂无描述');
     const url = escapeHtml(bookmark.url);
     const name = escapeHtml(bookmark.name || bookmark.title || bookmark.url);
+    const manualEnabled = isManualSortEnabled();
+    const draggableAttr = manualEnabled ? ' draggable="true"' : '';
+    const manualClass = manualEnabled ? ' bookmark-card--draggable' : '';
 
     const favoriteBadge = favorite ? '<span class="bookmark-favorite" aria-label="收藏书签">⭐</span>' : '';
 
     return `
-        <article class="bookmark-card ${favorite ? 'bookmark-card--favorite' : ''}" data-bookmark-id="${bookmark.id}" tabindex="0">
+        <article class="bookmark-card ${favorite ? 'bookmark-card--favorite' : ''}${manualClass}" data-bookmark-id="${bookmark.id}" tabindex="0"${draggableAttr}>
             <div class="bookmark-header">
                 ${favoriteBadge}
                 <div class="bookmark-icon">${icon}</div>
@@ -127,9 +147,13 @@ function renderBookmarks() {
     const container = refs.bookmarksContainer;
     if (!container) return;
 
+    const manualEnabled = isManualSortEnabled();
+    const viewClass = state.viewMode === 'list' ? 'bookmarks-list' : 'bookmarks-grid';
+
     container.classList.remove('bookmarks-grid', 'bookmarks-list');
-    container.classList.add(state.viewMode === 'list' ? 'bookmarks-list' : 'bookmarks-grid');
+    container.classList.add(viewClass);
     container.classList.toggle('is-switching', state.isSwitching);
+    container.dataset.manualSort = manualEnabled ? 'true' : 'false';
 
     if (state.isLoading && state.hasLoaded) {
         container.classList.add('is-loading');
@@ -360,7 +384,28 @@ function handleSearchInput(event) {
 }
 
 function handleSortChange(event) {
-    state.sortBy = event.target.value;
+    const previousSort = state.sortBy;
+    const newSort = event.target.value;
+
+    if (newSort === 'display_order' && state.isGuest) {
+        Auth.showError('登录后才可以自定义排序');
+        event.target.value = previousSort;
+        return;
+    }
+
+    state.sortBy = newSort;
+    if (newSort === 'display_order') {
+        state.order = 'asc';
+        if (state.viewMode !== 'grid') {
+            switchView('grid');
+        }
+        if (!state.manualTipShown) {
+            Auth.showSuccess('拖拽书签卡片可以调整顺序');
+            state.manualTipShown = true;
+        }
+    } else if (previousSort === 'display_order') {
+        state.order = newSort === 'title' ? 'asc' : 'desc';
+    }
     state.page = 1;
     loadBookmarks();
 }
@@ -552,6 +597,10 @@ function bindEvents() {
     if (refs.bookmarksContainer) {
         refs.bookmarksContainer.addEventListener('click', handleBookmarkCardClick);
         refs.bookmarksContainer.addEventListener('keydown', handleBookmarkCardKeydown);
+        refs.bookmarksContainer.addEventListener('dragstart', handleBookmarkDragStart);
+        refs.bookmarksContainer.addEventListener('dragover', handleBookmarkDragOver);
+        refs.bookmarksContainer.addEventListener('drop', handleBookmarkDrop);
+        refs.bookmarksContainer.addEventListener('dragend', handleBookmarkDragEnd);
     }
     document.addEventListener('click', handleActionClick);
     document.addEventListener('keydown', (event) => {
@@ -564,6 +613,10 @@ function bindEvents() {
 function handleBookmarkCardClick(event) {
     const button = event.target.closest('button');
     if (button) return;
+    if (isManualSortEnabled() && bookmarkDragJustFinished) {
+        bookmarkDragJustFinished = false;
+        return;
+    }
     const card = event.target.closest('.bookmark-card');
     if (!card) return;
     const bookmarkId = parseInt(card.dataset.bookmarkId, 10);
@@ -580,6 +633,110 @@ function handleBookmarkCardKeydown(event) {
     const bookmarkId = parseInt(card.dataset.bookmarkId, 10);
     if (Number.isNaN(bookmarkId)) return;
     visitBookmark(bookmarkId);
+}
+
+function getBookmarkOrderFromDOM() {
+    if (!refs.bookmarksContainer) return [];
+    return Array.from(refs.bookmarksContainer.querySelectorAll('.bookmark-card[data-bookmark-id]'))
+        .map(card => parseInt(card.dataset.bookmarkId, 10))
+        .filter(id => !Number.isNaN(id));
+}
+
+function applyLocalBookmarkOrder(orderIds) {
+    const map = new Map(state.bookmarks.map(bookmark => [bookmark.id, bookmark]));
+    const ordered = orderIds.map(id => map.get(id)).filter(Boolean);
+    const remaining = state.bookmarks.filter(bookmark => !orderIds.includes(bookmark.id));
+    ordered.forEach((bookmark, index) => {
+        if (bookmark) {
+            bookmark.display_order = index + 1;
+        }
+    });
+    state.bookmarks = [...ordered, ...remaining];
+    renderBookmarks();
+}
+
+async function persistBookmarkOrder(orderIds) {
+    try {
+        await API.reorderBookmarks(orderIds);
+        Auth.showSuccess('书签顺序已更新');
+        await loadBookmarks();
+    } catch (error) {
+        Auth.showError('更新书签顺序失败: ' + error.message);
+        await loadBookmarks();
+    } finally {
+        bookmarkDragJustFinished = false;
+    }
+}
+
+function handleBookmarkDragStart(event) {
+    if (!isManualSortEnabled()) return;
+    const card = event.target.closest('.bookmark-card');
+    if (!card || card.getAttribute('draggable') !== 'true') return;
+    draggedBookmarkCard = card;
+    dragStartBookmarkOrder = getBookmarkOrderFromDOM();
+    bookmarkDragJustFinished = false;
+    card.classList.add('is-dragging');
+    if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', card.dataset.bookmarkId || '');
+    }
+}
+
+function handleBookmarkDragOver(event) {
+    if (!isManualSortEnabled() || !draggedBookmarkCard) return;
+    event.preventDefault();
+    if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = 'move';
+    }
+    if (!refs.bookmarksContainer) return;
+    const target = event.target.closest('.bookmark-card');
+    if (!target) {
+        refs.bookmarksContainer.appendChild(draggedBookmarkCard);
+        return;
+    }
+    if (target === draggedBookmarkCard) {
+        return;
+    }
+
+    const rect = target.getBoundingClientRect();
+    const shouldInsertBefore = (event.clientY - rect.top) < rect.height / 2;
+    if (shouldInsertBefore) {
+        refs.bookmarksContainer.insertBefore(draggedBookmarkCard, target);
+    } else {
+        refs.bookmarksContainer.insertBefore(draggedBookmarkCard, target.nextSibling);
+    }
+}
+
+async function handleBookmarkDrop(event) {
+    if (!isManualSortEnabled() || !draggedBookmarkCard) return;
+    event.preventDefault();
+    draggedBookmarkCard.classList.remove('is-dragging');
+    const newOrder = getBookmarkOrderFromDOM();
+    const prevOrder = dragStartBookmarkOrder.slice();
+    draggedBookmarkCard = null;
+    dragStartBookmarkOrder = [];
+    bookmarkDragJustFinished = true;
+
+    if (!newOrder.length) {
+        return;
+    }
+
+    const unchanged = newOrder.length === prevOrder.length && newOrder.every((id, idx) => id === prevOrder[idx]);
+    if (unchanged) {
+        return;
+    }
+
+    applyLocalBookmarkOrder(newOrder);
+    await persistBookmarkOrder(newOrder);
+}
+
+function handleBookmarkDragEnd() {
+    if (draggedBookmarkCard) {
+        draggedBookmarkCard.classList.remove('is-dragging');
+    }
+    draggedBookmarkCard = null;
+    dragStartBookmarkOrder = [];
+    bookmarkDragJustFinished = false;
 }
 
 async function loadCategories() {

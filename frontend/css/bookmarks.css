@@ -349,6 +349,16 @@ body {
     position: relative;
 }
 
+.bookmark-card--draggable {
+    cursor: grab;
+    user-select: none;
+}
+
+.bookmark-card--draggable.is-dragging {
+    opacity: 0.6;
+    cursor: grabbing;
+}
+
 .bookmark-card:hover {
     transform: translateY(-4px);
     box-shadow: var(--shadow-lg);
