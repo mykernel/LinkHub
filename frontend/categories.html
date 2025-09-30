@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkHub - 分类管理</title>
+    <link rel="stylesheet" href="./css/categories.css">
+</head>
+<body>
+    <div class="container">
+        <header class="page-header" role="banner">
+            <div class="page-header__title">
+                <a href="bookmarks.html" class="back-btn">← 返回</a>
+                <h1 class="page-title">分类管理</h1>
+            </div>
+            <button class="btn-primary" type="button" data-action="open-category-modal">➕ 新建分类</button>
+        </header>
+
+        <section class="section" aria-labelledby="systemCategoriesTitle">
+            <div class="section__header">
+                <div>
+                    <h2 class="section__title" id="systemCategoriesTitle">系统预设分类</h2>
+                    <p class="section__subtitle">系统内置的分类，不可删除或修改</p>
+                </div>
+            </div>
+            <div class="category-grid" data-role="system-category-list">
+                <div class="empty-state">
+                    <div class="empty-state__icon">📁</div>
+                    <div>正在加载系统分类...</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section" aria-labelledby="customCategoriesTitle">
+            <div class="section__header">
+                <div>
+                    <h2 class="section__title" id="customCategoriesTitle">自定义分类</h2>
+                    <p class="section__subtitle">你创建的分类，可以编辑或删除</p>
+                </div>
+            </div>
+            <div class="sort-hint">💡 提示：拖拽分类卡片可以调整显示顺序</div>
+            <div class="category-grid" data-role="custom-category-list">
+                <div class="empty-state">
+                    <div class="empty-state__icon">💡</div>
+                    <div>正在加载自定义分类...</div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div class="modal" id="categoryModal" role="dialog" aria-modal="true" aria-labelledby="categoryModalTitle">
+        <div class="modal__content">
+            <div class="modal__header">
+                <h3 id="categoryModalTitle">新建分类</h3>
+                <button class="btn-cancel" type="button" data-action="close-category-modal">✕</button>
+            </div>
+            <p class="modal__description">设置分类的名称、图标和颜色，方便在书签列表中区分。</p>
+            <form class="form" id="categoryForm">
+                <div class="form-group">
+                    <label class="form-label" for="categoryName">分类名称</label>
+                    <input id="categoryName" class="form-input" type="text" placeholder="输入分类名称" name="name" required maxlength="20">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">选择图标</label>
+                    <div class="picker-grid" data-role="icon-picker"></div>
+                    <input type="hidden" name="icon" id="categoryIcon">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">选择颜色</label>
+                    <div class="picker-grid" data-role="color-picker"></div>
+                    <input type="hidden" name="color" id="categoryColor">
+                </div>
+                <div class="modal__actions">
+                    <button type="button" class="btn-cancel" data-action="close-category-modal">取消</button>
+                    <button type="submit" class="btn-submit">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="deleteModal" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle">
+        <div class="modal__content">
+            <div class="modal__header">
+                <h3 id="deleteModalTitle">删除分类</h3>
+                <button class="btn-cancel" type="button" data-action="close-delete-modal">✕</button>
+            </div>
+            <div class="delete-warning">
+                ⚠️ 此分类下共有 <span data-role="delete-bookmark-count">0</span> 个书签。删除前请先选择一个分类接收这些书签。
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="transferCategory">转移到</label>
+                <select class="transfer-select" id="transferCategory"></select>
+            </div>
+            <div class="modal__actions">
+                <button type="button" class="btn-cancel" data-action="close-delete-modal">取消</button>
+                <button type="button" class="btn-submit" data-action="confirm-delete">确认删除</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="./js/api.js"></script>
+    <script src="./js/auth.js"></script>
+    <script src="./js/categories.js"></script>
+</body>
+</html>

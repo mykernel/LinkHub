@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkHub - 书签管理</title>
+    <link rel="stylesheet" href="./css/bookmarks.css">
+</head>
+<body>
+    <div class="container">
+        <header class="page-header" role="banner">
+            <div class="header-top">
+                <div class="logo">🔗 LinkHub</div>
+                <div class="user-menu guest-menu" data-role="guest-menu">
+                    <button class="btn btn-primary" type="button" data-action="go-login">🔑 登录</button>
+                    <button class="btn btn-secondary" type="button" data-action="go-signup">✨ 注册</button>
+                </div>
+                <div class="user-menu auth-menu is-hidden" data-role="auth-menu">
+                    <div class="user-info">
+                        <div class="avatar" data-role="avatar">U</div>
+                        <span data-role="username">用户名</span>
+                    </div>
+                    <button class="btn btn-secondary" type="button" data-action="go-categories">📁 分类管理</button>
+                    <button class="btn btn-secondary" type="button" data-action="go-settings">⚙️ 设置</button>
+                    <button class="btn btn-secondary" type="button" data-action="logout">🚪 退出</button>
+                </div>
+            </div>
+            <section class="search-bar" aria-label="搜索书签">
+                <input type="search" class="search-input" placeholder="搜索书签名称或描述..." aria-label="搜索书签">
+                <button class="btn btn-primary" type="button" data-action="run-search">🔍 搜索</button>
+                <button class="btn btn-primary auth-only is-hidden" type="button" data-action="open-add-modal">➕ 添加书签</button>
+            </section>
+            <section class="toolbar" aria-label="视图和排序工具">
+                <div class="toolbar-left">
+                    <label>
+                        <span class="sr-only">排序方式</span>
+                        <select class="select-input sort-select" aria-label="排序方式">
+                            <option value="created_at">按创建时间</option>
+                            <option value="last_visit_at">按访问时间</option>
+                            <option value="visit_count">按点击量</option>
+                            <option value="title">按名称</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span class="sr-only">每页数量</span>
+                        <select class="select-input page-size-select" aria-label="每页数量">
+                            <option value="12">12 条/页</option>
+                            <option value="24">24 条/页</option>
+                            <option value="48">48 条/页</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="toolbar-right">
+                    <div class="view-toggle" role="group" aria-label="视图切换">
+                        <button class="view-btn active" type="button" data-view="grid">📱 网格</button>
+                        <button class="view-btn" type="button" data-view="list">📋 列表</button>
+                    </div>
+                </div>
+            </section>
+        </header>
+
+        <main class="main-content" role="main">
+            <section class="categories" aria-labelledby="categoriesTitle">
+                <div class="categories-header">
+                    <h2 class="categories-title" id="categoriesTitle">分类</h2>
+                    <button class="btn btn-primary" type="button" data-action="go-categories">➕ 管理分类</button>
+                </div>
+                <nav class="category-tags" aria-label="书签分类"></nav>
+            </section>
+
+            <section class="bookmarks-section" aria-live="polite">
+                <div class="bookmarks-grid" data-role="bookmarks-container">
+                    <div class="loading-state">⏳ 正在加载...</div>
+                </div>
+            </section>
+
+            <nav class="pagination" aria-label="分页导航">
+                <div class="pagination-info" data-role="pagination-info">显示 1-12 条，共 0 条</div>
+                <div class="pagination-controls" data-role="pagination-controls"></div>
+            </nav>
+        </main>
+    </div>
+
+    <div class="modal auth-only" id="addBookmarkModal" role="dialog" aria-modal="true" aria-labelledby="bookmarkModalTitle">
+        <div class="modal-content">
+            <h3 class="modal-header" id="bookmarkModalTitle">添加书签</h3>
+            <form>
+                <div class="form-group">
+                    <label class="form-label" for="bookmarkName">名称 *</label>
+                    <input type="text" id="bookmarkName" class="form-input" placeholder="输入书签名称" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="urlInput">URL *</label>
+                    <div class="form-url-group">
+                        <select id="urlProtocol" class="form-input" aria-label="协议选择">
+                            <option value="https://">https://</option>
+                            <option value="http://">http://</option>
+                        </select>
+                        <input type="text" id="urlInput" class="form-input" placeholder="example.com/path" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="categorySelect">分类 *</label>
+                    <select id="categorySelect" class="form-input" required>
+                        <option value="">请选择分类</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="bookmarkIcon">图标（可选）</label>
+                    <input type="text" id="bookmarkIcon" class="form-input" placeholder="输入 emoji 或图标">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="bookmarkDescription">描述（可选）</label>
+                    <textarea id="bookmarkDescription" class="form-textarea" placeholder="输入书签描述"></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-cancel" data-action="close-modal">取消</button>
+                    <button type="submit" class="btn btn-submit">添加</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="./js/api.js"></script>
+    <script src="./js/auth.js"></script>
+    <script src="./js/bookmarks.js"></script>
+</body>
+</html>

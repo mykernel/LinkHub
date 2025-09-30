@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkHub - 注册</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .signup-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 480px;
+            padding: 48px 40px;
+            animation: slideUp 0.5s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo-section {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .logo {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .logo-text {
+            font-size: 32px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        .logo-subtitle {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .form-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .form-subtitle {
+            text-align: center;
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 18px;
+            color: #9ca3af;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 12px 12px 44px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: all 0.3s;
+            background: #f9fafb;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-input::placeholder {
+            color: #9ca3af;
+        }
+
+        .form-input.error {
+            border-color: #ef4444;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            font-size: 18px;
+            color: #9ca3af;
+            user-select: none;
+        }
+
+        .input-hint {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 6px;
+        }
+
+        .input-error {
+            font-size: 12px;
+            color: #ef4444;
+            margin-top: 6px;
+            display: none;
+        }
+
+        .input-error.show {
+            display: block;
+        }
+
+        .password-strength {
+            margin-top: 8px;
+        }
+
+        .strength-label {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 6px;
+        }
+
+        .strength-bar {
+            height: 4px;
+            background: #e5e7eb;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .strength-fill {
+            height: 100%;
+            width: 0%;
+            transition: all 0.3s;
+            border-radius: 2px;
+        }
+
+        .strength-fill.weak {
+            width: 33%;
+            background: #ef4444;
+        }
+
+        .strength-fill.medium {
+            width: 66%;
+            background: #f59e0b;
+        }
+
+        .strength-fill.strong {
+            width: 100%;
+            background: #10b981;
+        }
+
+        .terms {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            margin-bottom: 24px;
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        .terms input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #667eea;
+            margin-top: 2px;
+            flex-shrink: 0;
+        }
+
+        .terms a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .terms a:hover {
+            text-decoration: underline;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-submit:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .btn-submit:active {
+            transform: translateY(0);
+        }
+
+        .btn-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 24px 0;
+            color: #9ca3af;
+            font-size: 14px;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #e5e7eb;
+        }
+
+        .divider::before {
+            margin-right: 16px;
+        }
+
+        .divider::after {
+            margin-left: 16px;
+        }
+
+        .login-prompt {
+            text-align: center;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .login-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+
+        .login-link:hover {
+            color: #5568d3;
+        }
+
+        .features {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+
+        .features-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 12px;
+        }
+
+        .feature-list {
+            display: grid;
+            gap: 8px;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        .feature-icon {
+            font-size: 16px;
+        }
+
+        @media (max-width: 480px) {
+            .signup-container {
+                padding: 32px 24px;
+            }
+
+            .logo-text {
+                font-size: 28px;
+            }
+
+            .form-title {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="signup-container">
+        <!-- Logo 区域 -->
+        <div class="logo-section">
+            <div class="logo">🔗</div>
+            <h1 class="logo-text">LinkHub</h1>
+            <p class="logo-subtitle">开始管理你的书签</p>
+        </div>
+
+        <!-- 标题 -->
+        <h2 class="form-title">创建账户</h2>
+        <p class="form-subtitle">免费注册，立即开始使用</p>
+
+        <!-- 功能亮点 -->
+        <div class="features">
+            <div class="features-title">你将获得：</div>
+            <div class="feature-list">
+                <div class="feature-item">
+                    <span class="feature-icon">☁️</span>
+                    <span>云端同步，多设备访问</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🔒</span>
+                    <span>AES-256 加密保护隐私</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">📱</span>
+                    <span>响应式设计，随时随地管理</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 注册表单 -->
+        <form id="signupForm" onsubmit="handleSignup(event)">
+            <div class="form-group">
+                <label class="form-label">用户名</label>
+                <div class="input-wrapper">
+                    <span class="input-icon">👤</span>
+                    <input
+                        type="text"
+                        class="form-input"
+                        id="usernameInput"
+                        placeholder="请输入用户名"
+                        required
+                        autocomplete="username"
+                        minlength="3"
+                        maxlength="20"
+                        oninput="validateUsername()"
+                    >
+                </div>
+                <div class="input-hint">3-20 个字符，支持字母、数字和下划线</div>
+                <div class="input-error" id="usernameError">用户名已存在</div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">密码</label>
+                <div class="input-wrapper">
+                    <span class="input-icon">🔒</span>
+                    <input
+                        type="password"
+                        class="form-input"
+                        id="passwordInput"
+                        placeholder="请设置密码"
+                        required
+                        autocomplete="new-password"
+                        minlength="8"
+                        oninput="checkPasswordStrength()"
+                    >
+                    <span class="password-toggle" onclick="togglePassword('passwordInput', this)">👁️</span>
+                </div>
+                <div class="password-strength">
+                    <div class="strength-label">密码强度：<span id="strengthText">-</span></div>
+                    <div class="strength-bar">
+                        <div class="strength-fill" id="strengthFill"></div>
+                    </div>
+                </div>
+                <div class="input-hint">至少 8 个字符，建议包含大小写字母、数字和符号</div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">确认密码</label>
+                <div class="input-wrapper">
+                    <span class="input-icon">🔒</span>
+                    <input
+                        type="password"
+                        class="form-input"
+                        id="confirmPasswordInput"
+                        placeholder="请再次输入密码"
+                        required
+                        autocomplete="new-password"
+                        oninput="validatePasswordMatch()"
+                    >
+                    <span class="password-toggle" onclick="togglePassword('confirmPasswordInput', this)">👁️</span>
+                </div>
+                <div class="input-error" id="confirmPasswordError">两次输入的密码不一致</div>
+            </div>
+
+            <label class="terms">
+                <input type="checkbox" id="termsCheckbox" required>
+                <span>我已阅读并同意 <a href="#">用户协议</a> 和 <a href="#">隐私政策</a></span>
+            </label>
+
+            <button type="submit" class="btn-submit" id="submitBtn">
+                立即注册
+            </button>
+        </form>
+
+        <!-- 分隔线 -->
+        <div class="divider">已有账户？</div>
+
+        <!-- 登录提示 -->
+        <div class="login-prompt">
+            <a href="login.html" class="login-link">立即登录</a>
+        </div>
+    </div>
+
+    <script>
+        let usernameValid = false;
+        let passwordStrong = false;
+        let passwordMatch = false;
+
+        function validateUsername() {
+            const input = document.getElementById('usernameInput');
+            const error = document.getElementById('usernameError');
+            const value = input.value.trim();
+
+            // 模拟用户名验证
+            if (value.length >= 3) {
+                if (value === 'admin' || value === 'test') {
+                    input.classList.add('error');
+                    error.classList.add('show');
+                    usernameValid = false;
+                } else {
+                    input.classList.remove('error');
+                    error.classList.remove('show');
+                    usernameValid = true;
+                }
+            } else {
+                input.classList.remove('error');
+                error.classList.remove('show');
+                usernameValid = false;
+            }
+
+            updateSubmitButton();
+        }
+
+        function checkPasswordStrength() {
+            const password = document.getElementById('passwordInput').value;
+            const strengthFill = document.getElementById('strengthFill');
+            const strengthText = document.getElementById('strengthText');
+
+            let strength = 0;
+
+            if (password.length >= 8) strength++;
+            if (password.match(/[a-z]/) && password.match(/[A-Z]/)) strength++;
+            if (password.match(/[0-9]/)) strength++;
+            if (password.match(/[^a-zA-Z0-9]/)) strength++;
+
+            strengthFill.className = 'strength-fill';
+
+            if (strength <= 1) {
+                strengthFill.classList.add('weak');
+                strengthText.textContent = '弱';
+                passwordStrong = false;
+            } else if (strength <= 3) {
+                strengthFill.classList.add('medium');
+                strengthText.textContent = '中';
+                passwordStrong = true;
+            } else {
+                strengthFill.classList.add('strong');
+                strengthText.textContent = '强';
+                passwordStrong = true;
+            }
+
+            if (password.length === 0) {
+                strengthFill.className = 'strength-fill';
+                strengthText.textContent = '-';
+                passwordStrong = false;
+            }
+
+            validatePasswordMatch();
+            updateSubmitButton();
+        }
+
+        function validatePasswordMatch() {
+            const password = document.getElementById('passwordInput').value;
+            const confirmPassword = document.getElementById('confirmPasswordInput').value;
+            const input = document.getElementById('confirmPasswordInput');
+            const error = document.getElementById('confirmPasswordError');
+
+            if (confirmPassword.length > 0) {
+                if (password !== confirmPassword) {
+                    input.classList.add('error');
+                    error.classList.add('show');
+                    passwordMatch = false;
+                } else {
+                    input.classList.remove('error');
+                    error.classList.remove('show');
+                    passwordMatch = true;
+                }
+            } else {
+                input.classList.remove('error');
+                error.classList.remove('show');
+                passwordMatch = false;
+            }
+
+            updateSubmitButton();
+        }
+
+        function updateSubmitButton() {
+            const submitBtn = document.getElementById('submitBtn');
+            const termsChecked = document.getElementById('termsCheckbox').checked;
+
+            if (usernameValid && passwordStrong && passwordMatch && termsChecked) {
+                submitBtn.disabled = false;
+            } else {
+                submitBtn.disabled = true;
+            }
+        }
+
+        function togglePassword(inputId, toggleBtn) {
+            const input = document.getElementById(inputId);
+
+            if (input.type === 'password') {
+                input.type = 'text';
+                toggleBtn.textContent = '🙈';
+            } else {
+                input.type = 'password';
+                toggleBtn.textContent = '👁️';
+            }
+        }
+
+        async function handleSignup(event) {
+            event.preventDefault();
+
+            const form = event.target;
+            const username = document.getElementById('usernameInput').value;
+            const password = document.getElementById('passwordInput').value;
+            const submitBtn = document.getElementById('submitBtn');
+
+            // 显示加载状态
+            Auth.showLoading(submitBtn, '注册中...');
+
+            try {
+                // 调用注册 API
+                await API.signup(username, password);
+
+                // 显示成功提示
+                Auth.showSuccess('注册成功！正在跳转...');
+
+                // 跳转到书签页
+                setTimeout(() => {
+                    window.location.href = '/bookmarks.html';
+                }, 500);
+
+            } catch (error) {
+                // 显示错误提示
+                Auth.hideLoading(submitBtn);
+                Auth.showError(error.message || '注册失败，请重试');
+
+                // 如果是用户名已存在，标记输入框
+                if (error.message && error.message.includes('用户名已存在')) {
+                    const input = document.getElementById('usernameInput');
+                    const errorEl = document.getElementById('usernameError');
+                    input.classList.add('error');
+                    errorEl.textContent = '用户名已存在';
+                    errorEl.classList.add('show');
+                    usernameValid = false;
+                }
+            }
+        }
+
+        // 监听条款复选框
+        document.getElementById('termsCheckbox').addEventListener('change', updateSubmitButton);
+
+        // 初始化按钮状态
+        updateSubmitButton();
+
+        // 如果已登录，跳转到书签页
+        Auth.redirectIfLoggedIn();
+    </script>
+
+    <!-- API 和认证工具 -->
+    <script src="./js/api.js"></script>
+    <script src="./js/auth.js"></script>
+</body>
+</html>
