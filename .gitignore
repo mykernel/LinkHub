@@ -1,0 +1,31 @@
+deepseek.key
+
+# Build directories
+.next/
+
+# Log files
+*.log
+backend.log
+frontend.log
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak
+image.png
